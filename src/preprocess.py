@@ -3,6 +3,7 @@ import os
 import librosa
 import audioread
 import pickle
+import audioop
 import pandas as pd
 import numpy as np
 
@@ -10,8 +11,8 @@ import numpy as np
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
-here = Path(__file__).parent
 DATAFRAME_FILENAME = 'dataset.pkl'
+here = Path(__file__).parent
 INTERIM_PATH = here/'../data/interim'
 
 DEFAULT_SR = 22050  # TODO: 16k instead?
