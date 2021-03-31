@@ -4,6 +4,7 @@ import librosa
 import audioread
 import pickle
 import audioop
+import math
 import pandas as pd
 import numpy as np
 
@@ -14,7 +15,7 @@ DATAFRAME_FILENAME = 'dataset.pkl'
 here = Path(__file__).parent
 DATA_PATH = here / '../data/'
 
-DEBUG = True
+DEBUG = False
 
 DRUM_TYPES = ["kick", "snare", "hat", "tom"]
 DEFAULT_SR = 22050  # TODO: 16k instead?
@@ -25,15 +26,18 @@ def read_drum_library(input_dir_path):
     logger.info(f'Searching for audio files found in {input_dir_path}')
 
     dataframe_rows = []
-    for input_file in input_dir_path.glob('**/*.wav'):
+    for input_file in Path(input_dir_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
         if DEBUG:
-            print(absolute_path_name)
+            print(absolute_path_name[len(input_dir_path)+1:])
         if not can_load_audio(absolute_path_name):
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
         drum_class = assign_class(absolute_path_name, file_stem)
+        if drum_class is None:
+            continue
+
         properties = {
             'audio_path': absolute_path_name,
             'file_stem': file_stem,
@@ -56,10 +60,11 @@ def read_drum_library(input_dir_path):
         dataframe_rows.append(properties)
 
     dataframe = pd.DataFrame(dataframe_rows)
+    dataframe["new_duration"] = dataframe.apply(lambda row: new_duration(row), axis=1)
 
-    library_store_path = DATA_PATH.joinpath(DATAFRAME_FILENAME)
-    pickle.dump(dataframe, open(library_store_path, 'wb'))
-    return library_store_path.absolute().as_posix()
+    pickle_path = DATA_PATH.joinpath(DATAFRAME_FILENAME)
+    pickle.dump(dataframe, open(pickle_path, 'wb'))
+    return pickle_path.absolute().as_posix()
 
 
 def can_load_audio(path_string):
@@ -104,13 +109,26 @@ def assign_class(absolute_path, file_stem):
         # That way, we first check the file stem (in case the latter contains "hat" and the absolute path contains
         # "kick" for example)
         if drum_type in file_stem.lower() or drum_type in absolute_path.lower():
-            # blacklist_file = open(DATA_PATH/"blacklist.txt")
-            # for line in blacklist_file:
-            #     blacklist = line.split(",")
-            #     for b in blacklist:
-            #         if b in absolute_path.lower():
-            #             return None
+
+            blacklist_file = open(DATA_PATH/"blacklist.txt")
+            for line in blacklist_file:
+                blacklist = line.split(",")
+                for b in blacklist:
+                    if b in absolute_path.lower():
+                        print("{} blacklisted".format(absolute_path))
+                        return None
+
+            ignoring_file = open(DATA_PATH/"ignore.txt")
+            for line in ignoring_file:
+                to_ignore = line.split(",")
+                for ig in to_ignore:
+                    if ig in absolute_path.lower():
+                        absolute_path.replace(ig, "")
+                        for dt in DRUM_TYPES:
+                            if dt in file_stem.lower() or dt in absolute_path.lower():
+                                return dt
             return drum_type
+    return None
 
 
 def trim_loop(raw_audio, sr=DEFAULT_SR):
@@ -141,8 +159,15 @@ def trim_loop(raw_audio, sr=DEFAULT_SR):
     return {'start': start, 'end': end}
 
 
+def new_duration(row):
+    if not math.isnan(row["end_time"]):
+        return float(row["end_time"]) - float(row["start_time"])
+    else:
+        return row["orig_duration"]
+
+
 if __name__ == "__main__":
-    pickle_path = read_drum_library(Path("/Users/rayandaod/Documents/Prod/My_samples"))
+    pickle_path = read_drum_library("/Users/rayandaod/Documents/Prod/My_samples")
     pkl_file = open(DATA_PATH/DATAFRAME_FILENAME, 'rb')
     df = pd.read_pickle(pkl_file)
     print(df)
