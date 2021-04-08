@@ -1,40 +1,33 @@
 import logging
-import os
 import librosa
-import audioread
 import pickle
-import audioop
 import math
 import pandas as pd
 import numpy as np
-
 from pathlib import Path
 
+import params
+import read_audio
+
 logger = logging.getLogger(__name__)
-DATAFRAME_FILENAME = 'dataset.pkl'
-here = Path(__file__).parent
-DATA_PATH = here / '../data/'
 
-DEBUG = False
-
-DRUM_TYPES = ["kick", "snare", "hat", "tom"]
-DEFAULT_SR = 22050  # TODO: 16k instead?
-MAXIMUM_LENGTH = 5  # TODO: discard samples longer than that ?
+DEBUG = True
 
 
 def read_drum_library(input_dir_path):
-    logger.info(f'Searching for audio files found in {input_dir_path}')
-
+    logger.info(f'Searching for audio files found in {input_dir_path}...')
     dataframe_rows = []
     for input_file in Path(input_dir_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
         if DEBUG:
-            print(absolute_path_name[len(input_dir_path)+1:])
-        if not can_load_audio(absolute_path_name):
+            print(absolute_path_name[len(input_dir_path) + 1:])
+        if not read_audio.can_load_audio(absolute_path_name):
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
         drum_class = assign_class(absolute_path_name, file_stem)
+
+        # Skip the recordings that do not belong to any of our classes
         if drum_class is None:
             continue
 
@@ -46,56 +39,45 @@ def read_drum_library(input_dir_path):
             'end_time': np.NaN
         }
         # Tack on the original file duration (will have to load audio)
-        audio = load_raw_audio(absolute_path_name, fast=True)
+        audio = read_audio.load_raw_audio(absolute_path_name, fast=True)
+
+        # can_load_audio check above usually catches bad files, but sometimes not
         if audio is None:
             logger.warning(f'Skipping {absolute_path_name}, unreadable (audio is None)')
-            continue  # can_load_audio check above usually catches bad files, but sometimes not
-        properties['orig_duration'] = len(audio) / float(DEFAULT_SR)
+            continue
 
-        if drum_class is not None:
-            onset_dict = trim_loop(audio)
-            properties['start_time'] = onset_dict["start"]
-            properties['end_time'] = onset_dict["end"]
+        # Add the original duration to the properties
+        properties['orig_duration'] = len(audio) / float(params.DEFAULT_SR)
+
+        # Check for the onsets
+        onset_dict = trim_loop(audio)
+        properties['start_time'] = onset_dict["start"]
+        properties['end_time'] = onset_dict["end"]
 
         dataframe_rows.append(properties)
 
+    if DEBUG:
+        print('     Loading files ok')
+
     dataframe = pd.DataFrame(dataframe_rows)
+
+    # Add a column new_duration, by taking into account the new start and end time (after loop trimming)
+    if DEBUG: print('Computing new durations...')
     dataframe["new_duration"] = dataframe.apply(lambda row: new_duration(row), axis=1)
 
-    pickle_path = DATA_PATH.joinpath(DATAFRAME_FILENAME)
-    pickle.dump(dataframe, open(pickle_path, 'wb'))
-    return pickle_path.absolute().as_posix()
+    # Only keep the samples with new_duration < 5 seconds
+    if DEBUG: print('Checking new durations...')
+    len_dataframe_1 = len(dataframe)
+    dataframe = dataframe[dataframe["new_duration"] <= params.MAX_SAMPLE_DURATION]
+    if DEBUG: print("Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe), params.MAX_SAMPLE_DURATION))
 
+    # Only keep the samples for which all the frames have an RMS above some threshold
+    if DEBUG: print('Filtering quiet outliers...')
+    dataframe = filter_quiet_outliers(dataframe)
 
-def can_load_audio(path_string):
-    if not os.path.isfile(path_string):
-        return False
-    try:
-        librosa.core.load(path_string, mono=True, res_type='kaiser_fast', duration=.01)
-    except (audioread.NoBackendError, audioread.DecodeError, EOFError, FileNotFoundError, ValueError, audioop.error):
-        logger.warning(f'Skipping {path_string}, unreadable')
-        return False
-    return True
-
-
-def load_raw_audio(path_string, sr=DEFAULT_SR, offset=0, duration=None, fast=False):
-    """
-    Mostly pass-through to librosa, but more defensively
-    """
-    try:
-        time_series, sr = librosa.core.load(path_string, sr=sr, mono=True, offset=offset, duration=duration,
-                                            res_type=('kaiser_fast' if fast else 'kaiser_best'))
-    except (audioread.NoBackendError, audioread.DecodeError, EOFError, FileNotFoundError, ValueError, audioop.error):
-        logger.warning(f'Can\'t read {path_string}')
-        return None
-
-    if (duration is None and time_series.shape[0] > 0) \
-            or (duration is not None and time_series.shape[0] + 1 >= int(sr * duration)):
-        return time_series
-    else:
-        logger.warning(f'Can\'t load {path_string} due to length, {time_series.shape[0]} {int(sr * duration)} '
-                       f'{duration} {sr}')
-        return None
+    pickle_dataset_path = params.DATA_PATH.joinpath(params.DATAFRAME_FILENAME)
+    pickle.dump(dataframe, open(pickle_dataset_path, 'wb'))
+    return pickle_dataset_path.absolute().as_posix()
 
 
 def assign_class(absolute_path, file_stem):
@@ -105,12 +87,12 @@ def assign_class(absolute_path, file_stem):
     :param file_stem: The name of the current sample
     :return: The assigned class, among those in DRUM_TYPES
     """
-    for drum_type in DRUM_TYPES:
+    for drum_type in params.DRUM_TYPES:
         # That way, we first check the file stem (in case the latter contains "hat" and the absolute path contains
         # "kick" for example)
         if drum_type in file_stem.lower() or drum_type in absolute_path.lower():
 
-            blacklist_file = open(DATA_PATH/"blacklist.txt")
+            blacklist_file = open(params.DATA_PATH / "blacklist.txt")
             for line in blacklist_file:
                 blacklist = line.split(",")
                 for b in blacklist:
@@ -118,20 +100,20 @@ def assign_class(absolute_path, file_stem):
                         print("{} blacklisted".format(absolute_path))
                         return None
 
-            ignoring_file = open(DATA_PATH/"ignore.txt")
+            ignoring_file = open(params.DATA_PATH / "ignore.txt")
             for line in ignoring_file:
                 to_ignore = line.split(",")
                 for ig in to_ignore:
                     if ig in absolute_path.lower():
                         absolute_path.replace(ig, "")
-                        for dt in DRUM_TYPES:
+                        for dt in params.DRUM_TYPES:
                             if dt in file_stem.lower() or dt in absolute_path.lower():
                                 return dt
             return drum_type
     return None
 
 
-def trim_loop(raw_audio, sr=DEFAULT_SR):
+def trim_loop(raw_audio, sr=params.DEFAULT_SR):
     """
     Finds the first onset of the sound, returns a good start time and end time that isolates the sound
     :param raw_audio: np array of audio data, from librosa.load
@@ -160,14 +142,27 @@ def trim_loop(raw_audio, sr=DEFAULT_SR):
 
 
 def new_duration(row):
-    if not math.isnan(row["end_time"]):
+    if row["end_time"] is not None and not math.isnan(row["end_time"]):
         return float(row["end_time"]) - float(row["start_time"])
     else:
-        return row["orig_duration"]
+        return row["orig_duration"] - row["start_time"]
+
+
+def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_cutoff=params.MAX_RMS_CUTOFF):
+    # Return a copy of the input dataframe without samples that are too quiet for a stable analysis
+    # (all RMS frames < 0.02)
+    def loud_enough(clip):
+        raw_audio = read_audio.load_clip_audio(clip)
+        frame_length = min(2048, len(raw_audio))
+        S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
+        rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length//4)
+        return max(rms[0][:max_frames]) >= max_rms_cutoff
+
+    return drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
 
 
 if __name__ == "__main__":
-    pickle_path = read_drum_library("/Users/rayandaod/Documents/Prod/My_samples")
-    pkl_file = open(DATA_PATH/DATAFRAME_FILENAME, 'rb')
-    df = pd.read_pickle(pkl_file)
-    print(df)
+    pickle_path = read_drum_library("/Users/rayandaod/Documents/Prod/My_samples/KSHMR Vol. 3")
+    pkl_file = open(params.DATA_PATH / params.DATAFRAME_FILENAME, 'rb')
+    # df = pd.read_pickle(pkl_file)
+    # print(df)
