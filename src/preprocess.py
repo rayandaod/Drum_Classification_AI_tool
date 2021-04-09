@@ -62,18 +62,25 @@ def read_drum_library(input_dir_path):
     dataframe = pd.DataFrame(dataframe_rows)
 
     # Add a column new_duration, by taking into account the new start and end time (after loop trimming)
-    if DEBUG: print('Computing new durations...')
+    if DEBUG:
+        print('Computing new durations...')
     dataframe["new_duration"] = dataframe.apply(lambda row: new_duration(row), axis=1)
 
     # Only keep the samples with new_duration < 5 seconds
-    if DEBUG: print('Checking new durations...')
+    if DEBUG:
+        print('Checking new durations...')
     len_dataframe_1 = len(dataframe)
     dataframe = dataframe[dataframe["new_duration"] <= params.MAX_SAMPLE_DURATION]
-    if DEBUG: print("Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe), params.MAX_SAMPLE_DURATION))
+    if DEBUG:
+        print("  Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
+                                                                             params.MAX_SAMPLE_DURATION))
 
-    # Only keep the samples for which all the frames have an RMS above some threshold
-    if DEBUG: print('Filtering quiet outliers...')
-    dataframe = filter_quiet_outliers(dataframe)
+    # # TODO: not working properly
+    # # Only keep the samples for which all the frames have an RMS above some threshold
+    # if DEBUG: print('Filtering quiet outliers...')
+    # len_dataframe_2 = len(dataframe)
+    # dataframe = filter_quiet_outliers(dataframe)
+    # if DEBUG: print("   Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
 
     pickle_dataset_path = params.DATA_PATH.joinpath(params.DATAFRAME_FILENAME)
     pickle.dump(dataframe, open(pickle_dataset_path, 'wb'))
@@ -155,8 +162,12 @@ def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_
         raw_audio = read_audio.load_clip_audio(clip)
         frame_length = min(2048, len(raw_audio))
         S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
-        rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length//4)
-        return max(rms[0][:max_frames]) >= max_rms_cutoff
+        rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length // 4)[0]
+        print(max(rms))
+        result = max(rms) >= max_rms_cutoff
+        if DEBUG and not result:
+            print(clip.audio_path)
+        return result
 
     return drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
 
@@ -164,5 +175,5 @@ def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_
 if __name__ == "__main__":
     pickle_path = read_drum_library("/Users/rayandaod/Documents/Prod/My_samples/KSHMR Vol. 3")
     pkl_file = open(params.DATA_PATH / params.DATAFRAME_FILENAME, 'rb')
-    # df = pd.read_pickle(pkl_file)
-    # print(df)
+    df = pd.read_pickle(pkl_file)
+    print(df.info(verbose=True))

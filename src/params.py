@@ -1,3 +1,4 @@
+import numpy as np
 from pathlib import Path
 
 DRUM_TYPES = ["kick", "snare", "hat", "tom"]
@@ -16,3 +17,10 @@ MAX_RMS_CUTOFF = 0.02   # If there is no frame with RMS >= MAX_RMS_CUTOFF within
 # Feature extraction parameters
 DEFAULT_START_ATTACK_THRESHOLD = 0.02
 DEFAULT_FRAME_LENGTH = 2048
+SUMMARY_OPS = {
+    'avg': np.mean,
+    'max': np.max,
+    'min': np.min,
+    'std': np.std,
+    'zcr': (lambda arr: len(np.where(np.diff(np.sign(arr)))[0]) / float(len(arr)))
+}
