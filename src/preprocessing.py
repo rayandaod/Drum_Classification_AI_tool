@@ -11,15 +11,13 @@ import read_audio
 
 logger = logging.getLogger(__name__)
 
-DEBUG = True
 
-
-def read_drum_library(input_dir_path):
+def read_drum_library(input_dir_path, verbose=False):
     logger.info(f'Searching for audio files found in {input_dir_path}...')
     dataframe_rows = []
     for input_file in Path(input_dir_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
-        if DEBUG:
+        if verbose:
             print(absolute_path_name[len(input_dir_path) + 1:])
         if not read_audio.can_load_audio(absolute_path_name):
             continue
@@ -56,35 +54,35 @@ def read_drum_library(input_dir_path):
 
         dataframe_rows.append(properties)
 
-    if DEBUG:
+    if verbose:
         print('     Loading files ok')
 
     dataframe = pd.DataFrame(dataframe_rows)
 
     # Add a column new_duration, by taking into account the new start and end time (after loop trimming)
-    if DEBUG:
+    if verbose:
         print('Computing new durations...')
     dataframe["new_duration"] = dataframe.apply(lambda row: new_duration(row), axis=1)
 
     # Only keep the samples with new_duration < 5 seconds
-    if DEBUG:
+    if verbose:
         print('Checking new durations...')
     len_dataframe_1 = len(dataframe)
     dataframe = dataframe[dataframe["new_duration"] <= params.MAX_SAMPLE_DURATION]
-    if DEBUG:
-        print("  Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
+    if verbose:
+        print(" Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
                                                                              params.MAX_SAMPLE_DURATION))
 
-    # # TODO: not working properly
-    # # Only keep the samples for which all the frames have an RMS above some threshold
-    # if DEBUG: print('Filtering quiet outliers...')
-    # len_dataframe_2 = len(dataframe)
-    # dataframe = filter_quiet_outliers(dataframe)
-    # if DEBUG: print("   Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
+    # Only keep the samples for which all the frames have an RMS above some threshold
+    if verbose:
+        print('Filtering quiet outliers...')
+    len_dataframe_2 = len(dataframe)
+    dataframe = filter_quiet_outliers(dataframe, verbose=verbose)
+    if verbose:
+        print(" Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
 
-    pickle_dataset_path = params.DATA_PATH.joinpath(params.DATAFRAME_FILENAME)
+    pickle_dataset_path = params.PICKLE_DATASET_PATH
     pickle.dump(dataframe, open(pickle_dataset_path, 'wb'))
-    return pickle_dataset_path.absolute().as_posix()
 
 
 def assign_class(absolute_path, file_stem):
@@ -99,7 +97,7 @@ def assign_class(absolute_path, file_stem):
         # "kick" for example)
         if drum_type in file_stem.lower() or drum_type in absolute_path.lower():
 
-            blacklist_file = open(params.DATA_PATH / "blacklist.txt")
+            blacklist_file = open(params.BLACKLIST_PATH)
             for line in blacklist_file:
                 blacklist = line.split(",")
                 for b in blacklist:
@@ -107,7 +105,7 @@ def assign_class(absolute_path, file_stem):
                         print("{} blacklisted".format(absolute_path))
                         return None
 
-            ignoring_file = open(params.DATA_PATH / "ignore.txt")
+            ignoring_file = open(params.IGNORE_PATH)
             for line in ignoring_file:
                 to_ignore = line.split(",")
                 for ig in to_ignore:
@@ -155,25 +153,34 @@ def new_duration(row):
         return row["orig_duration"] - row["start_time"]
 
 
-def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_cutoff=params.MAX_RMS_CUTOFF):
+def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_cutoff=params.MAX_RMS_CUTOFF,
+                          verbose=False):
     # Return a copy of the input dataframe without samples that are too quiet for a stable analysis
-    # (all RMS frames < 0.02)
+    # (RMS < 0.02 for all frames up to params.MAX_FRAMES (approximately 1 second))
+
     def loud_enough(clip):
         raw_audio = read_audio.load_clip_audio(clip)
         frame_length = min(2048, len(raw_audio))
         S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
         rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length // 4)[0]
-        print(max(rms))
-        result = max(rms) >= max_rms_cutoff
-        if DEBUG and not result:
-            print(clip.audio_path)
+        result = max(rms[:max_frames]) >= max_rms_cutoff
+        if not result:
+            text_file.write("\n{}".format(clip.audio_path))
+            if verbose:
+                print(clip.audio_path)
         return result
 
-    return drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
+    with open(params.QUIET_OUTLIERS_PATH) as text_file:
+        df = drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
+    return df
+
+
+def load_drums_df(reload=False, verbose=False):
+    if reload:
+        read_drum_library(params.SAMPLE_LIBRARY, verbose=verbose)
+    drums_df = pd.read_pickle(params.PICKLE_DATASET_PATH)
+    return drums_df
 
 
 if __name__ == "__main__":
-    pickle_path = read_drum_library("/Users/rayandaod/Documents/Prod/My_samples/KSHMR Vol. 3")
-    pkl_file = open(params.DATA_PATH / params.DATAFRAME_FILENAME, 'rb')
-    df = pd.read_pickle(pkl_file)
-    print(df.info(verbose=True))
+    load_drums_df(reload=True)
