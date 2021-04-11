@@ -16,4 +16,4 @@ if __name__ == "__main__":
 
     drums_df = preprocessing.load_drums_df(reload=args.reload, verbose=args.verbose)
     drums_df = feature_engineering.extract_all(drums_df, reload=args.reload, verbose=args.verbose)
-    training.train(drums_df=drums_df, model_key="gb", verbose=args.verbose)
+    training.train(drums_df=drums_df, model_key="random_forest", verbose=args.verbose)
