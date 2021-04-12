@@ -36,7 +36,7 @@ def train(drums_df, model_key, verbose=False):
     pred = model.predict(test_X)
     logger.info(f"{model_key}:")
     logger.info(classification_report(test_y, pred, target_names=drum_class_labels, zero_division=0))
-    return model
+    return model, test_X, test_y, drum_class_labels
 
 
 def split_data(drums_df):
@@ -93,4 +93,4 @@ def scaler(train_np, test_np):
 
 if __name__ == "__main__":
     drums_df = pd.read_pickle(params.PICKLE_DATASET_WITH_FEATURES_PATH)
-    model = train(drums_df, "random_forest")
+    model, test_X, test_Y, labels = train(drums_df, "random_forest")

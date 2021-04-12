@@ -57,7 +57,7 @@ def mpeg7_features(rms, frame_length, SA_threshold=params.DEFAULT_START_ATTACK_T
     # Get the index of the maximum amplitude sample
     peak = np.argmax(rms)
 
-    # Get the length of a frame in seconds
+    # Get the length of a hop in seconds
     hop_time_length = (frame_length//4) / sr
 
     # Compute an array of True, False values, where

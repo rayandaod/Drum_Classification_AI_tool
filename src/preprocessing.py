@@ -48,7 +48,7 @@ def read_drum_library(input_dir_path, verbose=False):
         properties['orig_duration'] = len(audio) / float(params.DEFAULT_SR)
 
         # Check for the onsets
-        onset_dict = trim_loop(audio)
+        onset_dict = detect_onsets(audio)
         properties['start_time'] = onset_dict["start"]
         properties['end_time'] = onset_dict["end"]
 
@@ -81,8 +81,7 @@ def read_drum_library(input_dir_path, verbose=False):
     if verbose:
         print(" Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
 
-    pickle_dataset_path = params.PICKLE_DATASET_PATH
-    pickle.dump(dataframe, open(pickle_dataset_path, 'wb'))
+    pickle.dump(dataframe, open(params.PICKLE_DATASET_PATH, 'wb'))
 
 
 def assign_class(absolute_path, file_stem):
@@ -118,7 +117,7 @@ def assign_class(absolute_path, file_stem):
     return None
 
 
-def trim_loop(raw_audio, sr=params.DEFAULT_SR):
+def detect_onsets(raw_audio, sr=params.DEFAULT_SR):
     """
     Finds the first onset of the sound, returns a good start time and end time that isolates the sound
     :param raw_audio: np array of audio data, from librosa.load
@@ -133,7 +132,7 @@ def trim_loop(raw_audio, sr=params.DEFAULT_SR):
     raw_audio = np.append(np.zeros(int(silence_to_add * sr)), raw_audio)
 
     # Spectral flux
-    hop_length = int(librosa.time_to_samples(1. / 200, sr=sr))
+    hop_length = int(sr * params.SR_FRACTION_FOR_TRIM)
     onsets = librosa.onset.onset_detect(y=raw_audio, sr=sr, hop_length=hop_length, units='time')
 
     if len(onsets) == 0:
@@ -165,12 +164,12 @@ def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_
         rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length // 4)[0]
         result = max(rms[:max_frames]) >= max_rms_cutoff
         if not result:
-            text_file.write("\n{}".format(clip.audio_path))
+            quiet_outliers_file.write("\n{}".format(clip.audio_path))
             if verbose:
                 print(clip.audio_path)
         return result
 
-    with open(params.QUIET_OUTLIERS_PATH) as text_file:
+    with open(params.QUIET_OUTLIERS_PATH, 'w') as quiet_outliers_file:
         df = drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
     return df
 

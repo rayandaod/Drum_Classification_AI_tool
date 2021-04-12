@@ -11,7 +11,11 @@ DATA_PATH = here / '../data/'
 DATAFRAME_FILENAME = 'dataset.pkl'
 PICKLE_DATASET_PATH = DATA_PATH.joinpath(DATAFRAME_FILENAME)
 
+DATAFRAME_NOT_CAPED_FILENAME = 'dataset_not_caped.pkl'
+PICKLE_DATAFRAME_NOT_CAPED_PATH = DATA_PATH.joinpath(DATAFRAME_NOT_CAPED_FILENAME)
+
 QUIET_OUTLIERS_PATH = DATA_PATH / "quiet_outliers.txt"
+BLACKLISTED_FILES_PATH = DATA_PATH / "blacklisted_files.txt"
 IGNORE_PATH = DATA_PATH / "ignore.txt"
 BLACKLIST_PATH = DATA_PATH / "blacklist.txt"
 
@@ -23,6 +27,7 @@ SCALER_PATH = DATA_PATH / 'scaler.pkl'
 
 # Preprocessing parameters
 DEFAULT_SR = 22050
+SR_FRACTION_FOR_TRIM = 1/200.0
 MAX_SAMPLE_DURATION = 5  # seconds
 MAX_FRAMES = 44     # About 1s of audio max, given librosa's default hop_length (= 512 samples): 44*512=22'528 samples
 MAX_RMS_CUTOFF = 0.02   # If there is no frame with RMS >= MAX_RMS_CUTOFF within MAX_FRAMES, we'll filter it out
