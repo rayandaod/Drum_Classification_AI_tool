@@ -12,7 +12,7 @@ from sklearn import preprocessing
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 
-import params
+from config import TrainingConfig, PathConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def train(drums_df, model_key, verbose=False):
 
 
 def split_data(drums_df):
-    drums_df_caped = drums_df.groupby('drum_type').head(params.N_SAMPLES_PER_CLASS)
+    drums_df_caped = drums_df.groupby('drum_type').head(TrainingConfig.N_SAMPLES_PER_CLASS)
     drum_type_labels, unique_labels = pd.factorize(drums_df_caped.drum_type)
     drums_df_labeled = drums_df_caped.assign(drum_type_labels=drum_type_labels)
 
@@ -72,12 +72,12 @@ def drop_columns(df, columns):
 
 def imputer(train_np, test_np):
     try:
-        imp = pickle.load(open(params.IMPUTATER_PATH, 'rb'))
+        imp = pickle.load(open(PathConfig.IMPUTATER_PATH, 'rb'))
     except FileNotFoundError:
         logger.info(f'No cached imputer found, training')
         imp = IterativeImputer(max_iter=25, random_state=0)
         imp.fit(train_np)
-        pickle.dump(imp, open(params.IMPUTATER_PATH, 'wb'))
+        pickle.dump(imp, open(PathConfig.IMPUTATER_PATH, 'wb'))
     train_np = imp.transform(train_np)
     test_np = imp.transform(test_np)
     return train_np, test_np
@@ -87,10 +87,10 @@ def scaler(train_np, test_np):
     scaler = preprocessing.StandardScaler().fit(train_np)
     train_np = scaler.transform(train_np)
     test_np = scaler.transform(test_np)
-    pickle.dump(scaler, open(params.SCALER_PATH, 'wb'))
+    pickle.dump(scaler, open(PathConfig.SCALER_PATH, 'wb'))
     return train_np, test_np
 
 
 if __name__ == "__main__":
-    drums_df = pd.read_pickle(params.PICKLE_DATASET_WITH_FEATURES_PATH)
+    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASET_WITH_FEATURES_PATH)
     model, test_X, test_Y, labels = train(drums_df, "random_forest")

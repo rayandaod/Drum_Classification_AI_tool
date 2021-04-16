@@ -5,7 +5,7 @@ import librosa
 import logging
 import numpy as np
 
-import params
+from config import GlobalConfig
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def can_load_audio(path_string):
     return True
 
 
-def load_raw_audio(path_string, sr=params.DEFAULT_SR, offset=0, duration=None, fast=False):
+def load_raw_audio(path_string, sr=GlobalConfig.DEFAULT_SR, offset=0, duration=None, fast=False):
     """
     Mostly pass-through to librosa, but more defensively
     """

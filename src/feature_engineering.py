@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict
 
-import params
+from config import GlobalConfig, FeatureConfig, PathConfig
 import read_audio
 
 
@@ -13,7 +13,7 @@ def extract_single(raw_audio, verbose=False):
     features: Dict[str, float] = dict()
 
     # Handle audio samples shorter than one frame
-    frame_length = min(params.DEFAULT_FRAME_LENGTH, len(raw_audio))
+    frame_length = min(FeatureConfig.DEFAULT_FRAME_LENGTH, len(raw_audio))
 
     # Retrieve the magnitude of the sample's STFT
     S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
@@ -51,7 +51,8 @@ def extract_single(raw_audio, verbose=False):
     return features
 
 
-def mpeg7_features(rms, frame_length, SA_threshold=params.DEFAULT_START_ATTACK_THRESHOLD, sr=params.DEFAULT_SR):
+def mpeg7_features(rms, frame_length, SA_threshold=FeatureConfig.DEFAULT_START_ATTACK_THRESHOLD,
+                   sr=GlobalConfig.DEFAULT_SR):
     features: Dict[str, float] = dict()
 
     # Get the index of the maximum amplitude sample
@@ -108,15 +109,15 @@ def rms_features(rms, is_long_enough_for_gradient):
     # Log RMS
     log_rms = np.log10(rms)
     for op in ['avg', 'std', 'min', 'max']:
-        features[f'log_rms_{op}'] = params.SUMMARY_OPS[op](log_rms)
+        features[f'log_rms_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_rms)
 
     # Log RMS gradient (but only for drum sounds with more than 1 frame, otherwise put NaN and handle later in training)
     if is_long_enough_for_gradient:
         log_rms_d = np.gradient(log_rms)
-        for op in params.SUMMARY_OPS.keys():
-            features[f'log_rms_d_{op}'] = params.SUMMARY_OPS[op](log_rms_d)
+        for op in FeatureConfig.SUMMARY_OPS.keys():
+            features[f'log_rms_d_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_rms_d)
     else:
-        for op in params.SUMMARY_OPS.keys():
+        for op in FeatureConfig.SUMMARY_OPS.keys():
             features[f'log_rms_d_{op}'] = np.NaN
 
     return features
@@ -125,9 +126,9 @@ def rms_features(rms, is_long_enough_for_gradient):
 def zero_crossing_rate_features(raw_audio, frame_length, valid_frames, loudest_valid_frame_index):
     features: Dict[str, float] = dict()
     zcr = librosa.feature.zero_crossing_rate(raw_audio, frame_length=frame_length, hop_length=frame_length // 4)
-    zcr = zcr[0][:params.MAX_FRAMES][valid_frames]
+    zcr = zcr[0][:FeatureConfig.MAX_FRAME][valid_frames]
     for op in ['avg', 'min', 'max', 'std']:
-        features[f'zcr_{op}'] = params.SUMMARY_OPS[op](zcr)
+        features[f'zcr_{op}'] = FeatureConfig.SUMMARY_OPS[op](zcr)
     features['zcr_loudest'] = zcr[loudest_valid_frame_index]
     return features
 
@@ -137,34 +138,34 @@ def spectral_features(S, frame_length, valid_frames, is_long_enough_for_gradient
     features: Dict[str, float] = dict()
 
     log_spec_cent = np.log10(librosa.feature.spectral_centroid(
-        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:params.MAX_FRAMES][valid_frames])
+        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:FeatureConfig.MAX_FRAME][valid_frames])
     for op in ['avg', 'min', 'max', 'std']:
-        features[f'log_spec_cent_{op}'] = params.SUMMARY_OPS[op](log_spec_cent)
+        features[f'log_spec_cent_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_spec_cent)
     features['log_spec_cent_loudest'] = log_spec_cent[loudest_valid_frame_index]
 
     if is_long_enough_for_gradient:
         log_spec_cent_d = np.gradient(log_spec_cent)
-    for op in params.SUMMARY_OPS.keys():
-        features[f'log_spec_cent_d_{op}'] = params.SUMMARY_OPS[op](log_spec_cent_d) if is_long_enough_for_gradient \
+    for op in FeatureConfig.SUMMARY_OPS.keys():
+        features[f'log_spec_cent_d_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_spec_cent_d) if is_long_enough_for_gradient \
             else np.NaN
 
     log_spec_band = np.log10(librosa.feature.spectral_bandwidth(S=S, n_fft=frame_length, hop_length=frame_length // 4)
-                             [0][:params.MAX_FRAMES][valid_frames])
+                             [0][:FeatureConfig.MAX_FRAME][valid_frames])
     for op in ['avg', 'min', 'max', 'std']:
-        features[f'log_spec_band_{op}'] = params.SUMMARY_OPS[op](log_spec_band)
+        features[f'log_spec_band_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_spec_band)
     features['log_spec_band_d_avg'] = np.mean(np.gradient(log_spec_band)) if is_long_enough_for_gradient else np.NaN
 
     spec_flat = librosa.feature.spectral_flatness(
-        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:params.MAX_FRAMES][valid_frames]
+        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:FeatureConfig.MAX_FRAME][valid_frames]
     for op in ['avg', 'min', 'max', 'std']:
-        features[f'spec_flat_{op}'] = params.SUMMARY_OPS[op](spec_flat)
+        features[f'spec_flat_{op}'] = FeatureConfig.SUMMARY_OPS[op](spec_flat)
     features['spec_flat_loudest'] = spec_flat[loudest_valid_frame_index]
     features['spec_flat_d_avg'] = np.mean(np.gradient(spec_flat)) if is_long_enough_for_gradient else np.NaN
 
     for roll_percent in [.15, .85]:
         spec_rolloff = librosa.feature.spectral_rolloff(
             S=S, roll_percent=roll_percent, n_fft=frame_length, hop_length=frame_length // 4
-        )[0][:params.MAX_FRAMES][valid_frames]
+        )[0][:FeatureConfig.MAX_FRAME][valid_frames]
         roll_percent_int = int(100 * roll_percent)
         features[f'log_spec_rolloff_{roll_percent_int}_loudest'] = np.log10(spec_rolloff[loudest_valid_frame_index]) \
             if spec_rolloff[loudest_valid_frame_index] > 0.0 else np.NaN
@@ -184,15 +185,15 @@ def mfcc_features(S, valid_frames, is_long_enough_for_gradient, loudest_valid_fr
     features: Dict[str, float] = dict()
 
     # Trim the first mfcc because it's basically volume
-    mfccs = librosa.feature.mfcc(S=S, n_mfcc=n_mfcc)[1:, :params.MAX_FRAMES][:, valid_frames]
+    mfccs = librosa.feature.mfcc(S=S, n_mfcc=n_mfcc)[1:, :FeatureConfig.MAX_FRAME][:, valid_frames]
     n_mfcc -= 1
 
     # Compute once because it's faster
     transformed_mfcc = {
-        'avg': params.SUMMARY_OPS['avg'](mfccs, axis=1),
-        'min': params.SUMMARY_OPS['min'](mfccs, axis=1),
-        'max': params.SUMMARY_OPS['max'](mfccs, axis=1),
-        'std': params.SUMMARY_OPS['std'](mfccs, axis=1),
+        'avg': FeatureConfig.SUMMARY_OPS['avg'](mfccs, axis=1),
+        'min': FeatureConfig.SUMMARY_OPS['min'](mfccs, axis=1),
+        'max': FeatureConfig.SUMMARY_OPS['max'](mfccs, axis=1),
+        'std': FeatureConfig.SUMMARY_OPS['std'](mfccs, axis=1),
         'loudest': mfccs[:, loudest_valid_frame]
     }
 
@@ -208,7 +209,7 @@ def mfcc_features(S, valid_frames, is_long_enough_for_gradient, loudest_valid_fr
     return features
 
 
-def trim_rms(rms, max_frames=params.MAX_FRAMES, max_rms_cutoff=params.MAX_RMS_CUTOFF):
+def trim_rms(rms, max_frames=FeatureConfig.MAX_FRAME, max_rms_cutoff=FeatureConfig.MAX_RMS_CUTOFF):
     rms = rms[:max_frames]
 
     # If the signal is too quiet, spectral/mfcc features might not be accurate in places (also, 0.0 will
@@ -244,12 +245,12 @@ def extract_all(drums_df, reload=False, verbose=False):
         features_dict_list = []
         drums_df.apply(lambda row: extract_all_helper(row, features_dict_list, verbose=verbose), axis=1)
         drums_df_with_features = pd.DataFrame(features_dict_list)
-        pickle.dump(drums_df_with_features, open(params.PICKLE_DATASET_WITH_FEATURES_PATH, 'wb'))
+        pickle.dump(drums_df_with_features, open(PathConfig.PICKLE_DATASET_WITH_FEATURES_PATH, 'wb'))
     else:
-        drums_df_with_features = pd.read_pickle(params.PICKLE_DATASET_WITH_FEATURES_PATH)
+        drums_df_with_features = pd.read_pickle(PathConfig.PICKLE_DATASET_WITH_FEATURES_PATH)
     return drums_df_with_features
 
 
 if __name__ == "__main__":
-    drums_df = pd.read_pickle(params.PICKLE_DATASET_PATH)
+    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASET_PATH)
     extract_all(drums_df, reload=True)

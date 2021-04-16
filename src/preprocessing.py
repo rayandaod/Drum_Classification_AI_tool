@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-import params
+from config import GlobalConfig, PreprocessingConfig, PathConfig
 import read_audio
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ def read_drum_library(input_dir_path, verbose=False):
             continue
 
         # Add the original duration to the properties
-        properties['orig_duration'] = len(audio) / float(params.DEFAULT_SR)
+        properties['orig_duration'] = len(audio) / float(GlobalConfig.DEFAULT_SR)
 
         # Check for the onsets
         onset_dict = detect_onsets(audio)
@@ -68,10 +68,10 @@ def read_drum_library(input_dir_path, verbose=False):
     if verbose:
         print('Checking new durations...')
     len_dataframe_1 = len(dataframe)
-    dataframe = dataframe[dataframe["new_duration"] <= params.MAX_SAMPLE_DURATION]
+    dataframe = dataframe[dataframe["new_duration"] <= PreprocessingConfig.MAX_SAMPLE_DURATION]
     if verbose:
         print(" Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
-                                                                             params.MAX_SAMPLE_DURATION))
+                                                                      PreprocessingConfig.MAX_SAMPLE_DURATION))
 
     # Only keep the samples for which all the frames have an RMS above some threshold
     if verbose:
@@ -81,7 +81,7 @@ def read_drum_library(input_dir_path, verbose=False):
     if verbose:
         print(" Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
 
-    pickle.dump(dataframe, open(params.PICKLE_DATASET_PATH, 'wb'))
+    pickle.dump(dataframe, open(PathConfig.PICKLE_DATASET_PATH, 'wb'))
 
 
 def assign_class(absolute_path, file_stem):
@@ -91,12 +91,12 @@ def assign_class(absolute_path, file_stem):
     :param file_stem: The name of the current sample
     :return: The assigned class, among those in DRUM_TYPES
     """
-    for drum_type in params.DRUM_TYPES:
+    for drum_type in GlobalConfig.DRUM_TYPES:
         # That way, we first check the file stem (in case the latter contains "hat" and the absolute path contains
         # "kick" for example)
         if drum_type in file_stem.lower() or drum_type in absolute_path.lower():
 
-            blacklist_file = open(params.BLACKLIST_PATH)
+            blacklist_file = open(PathConfig.BLACKLIST_PATH)
             for line in blacklist_file:
                 blacklist = line.split(",")
                 for b in blacklist:
@@ -104,20 +104,20 @@ def assign_class(absolute_path, file_stem):
                         print("{} blacklisted".format(absolute_path))
                         return None
 
-            ignoring_file = open(params.IGNORE_PATH)
+            ignoring_file = open(PathConfig.IGNORE_PATH)
             for line in ignoring_file:
                 to_ignore = line.split(",")
                 for ig in to_ignore:
                     if ig in absolute_path.lower():
                         absolute_path.replace(ig, "")
-                        for dt in params.DRUM_TYPES:
+                        for dt in GlobalConfig.DRUM_TYPES:
                             if dt in file_stem.lower() or dt in absolute_path.lower():
                                 return dt
             return drum_type
     return None
 
 
-def detect_onsets(raw_audio, sr=params.DEFAULT_SR):
+def detect_onsets(raw_audio, sr=GlobalConfig.DEFAULT_SR):
     """
     Finds the first onset of the sound, returns a good start time and end time that isolates the sound
     :param raw_audio: np array of audio data, from librosa.load
@@ -132,7 +132,7 @@ def detect_onsets(raw_audio, sr=params.DEFAULT_SR):
     raw_audio = np.append(np.zeros(int(silence_to_add * sr)), raw_audio)
 
     # Spectral flux
-    hop_length = int(sr * params.SR_FRACTION_FOR_TRIM)
+    hop_length = int(sr * PreprocessingConfig.SR_FRACTION_FOR_TRIM)
     onsets = librosa.onset.onset_detect(y=raw_audio, sr=sr, hop_length=hop_length, units='time')
 
     if len(onsets) == 0:
@@ -152,10 +152,10 @@ def new_duration(row):
         return row["orig_duration"] - row["start_time"]
 
 
-def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_cutoff=params.MAX_RMS_CUTOFF,
-                          verbose=False):
+def filter_quiet_outliers(drum_dataframe, max_frames=PreprocessingConfig.MAX_FRAMES,
+                          max_rms_cutoff=PreprocessingConfig.MAX_RMS_CUTOFF, verbose=False):
     # Return a copy of the input dataframe without samples that are too quiet for a stable analysis
-    # (RMS < 0.02 for all frames up to params.MAX_FRAMES (approximately 1 second))
+    # (RMS < 0.02 for all frames up to PreprocessingConfig.MAX_FRAMES (approximately 1 second))
 
     def loud_enough(clip):
         raw_audio = read_audio.load_clip_audio(clip)
@@ -169,15 +169,15 @@ def filter_quiet_outliers(drum_dataframe, max_frames=params.MAX_FRAMES, max_rms_
                 print(clip.audio_path)
         return result
 
-    with open(params.QUIET_OUTLIERS_PATH, 'w') as quiet_outliers_file:
+    with open(PathConfig.QUIET_OUTLIERS_PATH, 'w') as quiet_outliers_file:
         df = drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
     return df
 
 
 def load_drums_df(reload=False, verbose=False):
     if reload:
-        read_drum_library(params.SAMPLE_LIBRARY, verbose=verbose)
-    drums_df = pd.read_pickle(params.PICKLE_DATASET_PATH)
+        read_drum_library(PathConfig.SAMPLE_LIBRARY, verbose=verbose)
+    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASET_PATH)
     return drums_df
 
 
