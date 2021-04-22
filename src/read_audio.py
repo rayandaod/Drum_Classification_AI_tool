@@ -41,7 +41,7 @@ def load_raw_audio(path_string, sr=GlobalConfig.DEFAULT_SR, offset=0, duration=N
         return None
 
 
-def load_clip_audio(clip, sr=params.DEFAULT_SR):
+def load_clip_audio(clip, sr=GlobalConfig.DEFAULT_SR):
     """
     Clip is a row of a dataframe with a start_time, end_time, audio_path, and new_duration
     """
