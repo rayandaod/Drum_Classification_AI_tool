@@ -4,20 +4,24 @@ import pickle
 import math
 import pandas as pd
 import numpy as np
+import time
+import os
+
 from pathlib import Path
 
 from config import GlobalConfig, PreprocessingConfig, PathConfig
 import read_audio
+import helper
 
 logger = logging.getLogger(__name__)
 
 
-def read_drum_library(input_dir_path, verbose=False):
+def read_drum_library(input_dir_path):
     logger.info(f'Searching for audio files found in {input_dir_path}...')
     dataframe_rows = []
     for input_file in Path(input_dir_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
-        if verbose:
+        if GlobalConfig.VERBOSE:
             print(absolute_path_name[len(input_dir_path) + 1:])
         if not read_audio.can_load_audio(absolute_path_name):
             continue
@@ -54,34 +58,43 @@ def read_drum_library(input_dir_path, verbose=False):
 
         dataframe_rows.append(properties)
 
-    if verbose:
+    if GlobalConfig.VERBOSE:
         print('     Loading files ok')
 
     dataframe = pd.DataFrame(dataframe_rows)
 
     # Add a column new_duration, by taking into account the new start and end time (after loop trimming)
-    if verbose:
+    if GlobalConfig.VERBOSE:
         print('Computing new durations...')
     dataframe["new_duration"] = dataframe.apply(lambda row: new_duration(row), axis=1)
 
     # Only keep the samples with new_duration < 5 seconds
-    if verbose:
+    if GlobalConfig.VERBOSE:
         print('Checking new durations...')
     len_dataframe_1 = len(dataframe)
     dataframe = dataframe[dataframe["new_duration"] <= PreprocessingConfig.MAX_SAMPLE_DURATION]
-    if verbose:
+    if GlobalConfig.VERBOSE:
         print(" Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
                                                                       PreprocessingConfig.MAX_SAMPLE_DURATION))
 
     # Only keep the samples for which all the frames have an RMS above some threshold
-    if verbose:
+    if GlobalConfig.VERBOSE:
         print('Filtering quiet outliers...')
     len_dataframe_2 = len(dataframe)
-    dataframe = filter_quiet_outliers(dataframe, verbose=verbose)
-    if verbose:
+    dataframe = filter_quiet_outliers(dataframe)
+    if GlobalConfig.VERBOSE:
         print(" Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
 
-    pickle.dump(dataframe, open(PathConfig.PICKLE_DATASET_PATH, 'wb'))
+    # Save the pickle file in the right folder
+    folder_name = time.strftime("%Y%m%d-%H%M%S")
+    folder_path = PathConfig.PICKLE_DATASETS_PATH / folder_name
+    os.makedirs(folder_path)
+    pickle.dump(dataframe, open(folder_path / "dataset.pkl", 'wb'))
+
+    # TODO: create metadata.json
+
+
+    return folder_name
 
 
 def assign_class(absolute_path, file_stem):
@@ -174,12 +187,17 @@ def filter_quiet_outliers(drum_dataframe, max_frames=PreprocessingConfig.MAX_FRA
     return df
 
 
-def load_drums_df(reload=False, verbose=False):
-    if reload:
-        read_drum_library(PathConfig.SAMPLE_LIBRARY, verbose=verbose)
-    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASET_PATH)
-    return drums_df
+def load_drums_df(dataset_folder):
+    if GlobalConfig.RELOAD:
+        dataset_folder = read_drum_library(PathConfig.SAMPLE_LIBRARY)
+    if dataset_folder is not None:
+        drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_FILENAME)
+    else:
+        raise Exception('dataset_folder is None, please specify the dataset_folder name.')
+    return drums_df, dataset_folder
 
 
 if __name__ == "__main__":
-    load_drums_df(reload=True)
+    parser = helper.create_global_parser()
+    args = helper.parse_global_arguments(parser)
+    load_drums_df(args.old)

@@ -48,3 +48,9 @@ def min_path_wo_slash(file_path):
 
     # Replace the slashes with __, otherwise the path where to write is not recognised
     return file_path_minimized.replace("/", "__")
+
+
+def augment_data(drums_df, dataset_folder):
+    # Check class imbalance
+
+    return drums_df

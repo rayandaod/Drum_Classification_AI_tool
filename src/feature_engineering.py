@@ -6,9 +6,10 @@ from typing import Dict
 
 from config import GlobalConfig, FeatureConfig, PathConfig
 import read_audio
+import helper
 
 
-def extract_single(raw_audio, verbose=False):
+def extract_single(raw_audio):
     assert raw_audio.size != 0
     features: Dict[str, float] = dict()
 
@@ -59,7 +60,7 @@ def mpeg7_features(rms, frame_length, SA_threshold=FeatureConfig.DEFAULT_START_A
     peak = np.argmax(rms)
 
     # Get the length of a hop in seconds
-    hop_time_length = (frame_length//4) / sr
+    hop_time_length = (frame_length // 4) / sr
 
     # Compute an array of True, False values, where
     # - True means that the corresponding sample in rms has a value above SA_threshold * the maximum
@@ -146,7 +147,8 @@ def spectral_features(S, frame_length, valid_frames, is_long_enough_for_gradient
     if is_long_enough_for_gradient:
         log_spec_cent_d = np.gradient(log_spec_cent)
     for op in FeatureConfig.SUMMARY_OPS.keys():
-        features[f'log_spec_cent_d_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_spec_cent_d) if is_long_enough_for_gradient \
+        features[f'log_spec_cent_d_{op}'] = FeatureConfig.SUMMARY_OPS[op](
+            log_spec_cent_d) if is_long_enough_for_gradient \
             else np.NaN
 
     log_spec_band = np.log10(librosa.feature.spectral_bandwidth(S=S, n_fft=frame_length, hop_length=frame_length // 4)
@@ -224,14 +226,14 @@ def trim_rms(rms, max_frames=FeatureConfig.MAX_FRAME, max_rms_cutoff=FeatureConf
     return rms, valid_frames
 
 
-def extract_all_helper(clip, features_dict_list, verbose=False):
+def extract_all_helper(clip, features_dict_list):
     # Load the raw audio of the current clip/row
     # Note that load_clip_audio is used rather than load_raw_audio, in order to take into account the changes in
     # start_time, end_time, ... (due to loop trimming)
     raw_audio = read_audio.load_clip_audio(clip)
 
     # Extract the features for a single row
-    features_dict = extract_single(raw_audio, verbose=verbose)
+    features_dict = extract_single(raw_audio)
 
     # Include the row class to the features dictionary
     features_dict["drum_type"] = clip["class"]
@@ -240,17 +242,22 @@ def extract_all_helper(clip, features_dict_list, verbose=False):
     features_dict_list.append(features_dict)
 
 
-def extract_all(drums_df, reload=False, verbose=False):
-    if reload:
+def extract_all(drums_df, dataset_folder):
+    if GlobalConfig.RELOAD:
         features_dict_list = []
-        drums_df.apply(lambda row: extract_all_helper(row, features_dict_list, verbose=verbose), axis=1)
+        drums_df.apply(lambda row: extract_all_helper(row, features_dict_list), axis=1)
         drums_df_with_features = pd.DataFrame(features_dict_list)
-        pickle.dump(drums_df_with_features, open(PathConfig.PICKLE_DATASET_WITH_FEATURES_PATH, 'wb'))
+        pickle.dump(drums_df_with_features,
+                    open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_WITH_FEATURES_FILENAME,
+                         'wb'))
     else:
-        drums_df_with_features = pd.read_pickle(PathConfig.PICKLE_DATASET_WITH_FEATURES_PATH)
+        drums_df_with_features = pd.read_pickle(
+            PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_FILENAME)
     return drums_df_with_features
 
 
 if __name__ == "__main__":
-    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASET_PATH)
-    extract_all(drums_df, reload=True)
+    parser = helper.create_global_parser()
+    args = helper.parse_global_arguments(parser)
+    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / args.old / PathConfig.DATASET_FILENAME)
+    extract_all(drums_df, args.old)

@@ -6,11 +6,36 @@ import pandas as pd
 from os import path
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
+from argparse import ArgumentParser
 
 from config import TrainingConfig, PathConfig, GlobalConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def create_global_parser():
+    parser = ArgumentParser()
+    parser.add_argument('--reload', action='store_true', dest='reload',
+                        help='Reload the drum library and extract the features again.')
+    parser.add_argument('--old', type=str, default=None, help='Select an already loaded dataset')
+    parser.add_argument('--verbose', action='store_true', dest='verbose',
+                        help='Print useful data for debugging')
+    parser.set_defaults(reload=False)
+    parser.set_defaults(verbose=False)
+    return parser
+
+
+def parse_global_arguments(parser):
+    args = parser.parse_args()
+
+    GlobalConfig.RELOAD = args.reload
+    logger.info(f"Reload = {GlobalConfig.RELOAD}")
+
+    GlobalConfig.VERBOSE = args.verbose
+    logger.info(f"Verbose = {GlobalConfig.VERBOSE}")
+
+    return args
 
 
 # Check that the given file path does not already exists.
