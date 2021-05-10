@@ -20,7 +20,7 @@ if __name__ == "__main__":
                         help='Run a gridSearch based on the hyper-parameters in config.py')
     parser.add_argument('--seed', type=int, default=None,
                         help='Set up a random state to have the same train-test-datasets across different runs')
-    parser.add_argument('--model', type=str, default=None, choices=TrainingConfig.MODELS,
+    parser.add_argument('--model', type=str, default="random_forest", choices=TrainingConfig.MODELS,
                         help='Choose a model to train with')
 
     # Parse the global arguments and the new ones
@@ -34,4 +34,5 @@ if __name__ == "__main__":
     # TODO: add an optional or automatic use of data augmentation here + append to previous dataframe
     drums_df = data_augmentation.augment_data(drums_df, dataset_folder)  # useless for now
     drums_df = feature_engineering.extract_all(drums_df, dataset_folder=dataset_folder)
-    training.train(drums_df, model_key=args.model, grid_search_key=args.sweep)
+    training.train(drums_df, model_key=args.model, grid_search_key=args.sweep,
+                   dataset_folder=dataset_folder)

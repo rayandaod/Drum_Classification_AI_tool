@@ -17,7 +17,7 @@ class GlobalConfig:
 
 
 class PathConfig:
-    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/Graves_sample_pack"
+    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/KSHMR Vol. 3"
     here = Path(__file__).parent
     DATA_PATH = here / '../data/'
 
@@ -27,10 +27,12 @@ class PathConfig:
     # DATAFRAME_NOT_CAPED_FILENAME = 'dataset_not_caped.pkl'
     # PICKLE_DATAFRAME_NOT_CAPED_PATH = DATA_PATH.joinpath(DATAFRAME_NOT_CAPED_FILENAME)
 
-    QUIET_OUTLIERS_PATH = DATA_PATH / "quiet_outliers.txt"
-    BLACKLISTED_FILES_PATH = DATA_PATH / "blacklisted_files.txt"
-    IGNORE_PATH = DATA_PATH / "ignore.txt"
-    BLACKLIST_PATH = DATA_PATH / "blacklist.txt"
+    QUIET_OUTLIERS_FILENAME = "quiet_outliers.txt"
+    BLACKLISTED_FILES_FILENAME = "blacklisted_files.txt"
+    IGNORE_PATH = DATA_PATH / "to_ignore.txt"
+    BLACKLIST_PATH = DATA_PATH / "to_blacklist.txt"
+
+    METADATA_JSON_FILENAME = "metadata.json"
 
     AUGMENTED_DATA_PATH = DATA_PATH / "augmented_data/"
     TIME_STRETCHED_PATH = AUGMENTED_DATA_PATH / "time_stretched/"
@@ -38,8 +40,8 @@ class PathConfig:
 
     DATASET_WITH_FEATURES_FILENAME = 'dataset_features.pkl'
 
-    IMPUTATER_PATH = DATA_PATH / 'imputer.pkl'
-    SCALER_PATH = DATA_PATH / 'scaler.pkl'
+    IMPUTATER_FILENAME = 'imputer.pkl'
+    SCALER_FILENAME = 'scaler.pkl'
 
 
 class PreprocessingConfig:

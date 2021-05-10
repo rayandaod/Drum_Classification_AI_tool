@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from typing import Dict
+import json
 
 from config import GlobalConfig, FeatureConfig, PathConfig
 import read_audio
@@ -253,11 +254,24 @@ def extract_all(drums_df, dataset_folder):
     else:
         drums_df_with_features = pd.read_pickle(
             PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_FILENAME)
+
+    features_list = []
+    for col_name in drums_df_with_features.columns:
+        features_list.append(col_name)
+    features_dict = {"features": features_list}
+    with open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.METADATA_JSON_FILENAME, "r+") as file:
+        data = json.load(file)
+        data.update(features_dict)
+        file.seek(0)
+        json.dump(data, file)
+
     return drums_df_with_features
 
 
 if __name__ == "__main__":
     parser = helper.create_global_parser()
     args = helper.parse_global_arguments(parser)
-    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / args.old / PathConfig.DATASET_FILENAME)
-    extract_all(drums_df, args.old)
+    dataset_folder = args.old
+    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_FILENAME)
+    extract_all(drums_df, dataset_folder)
+

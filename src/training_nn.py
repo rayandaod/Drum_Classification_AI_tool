@@ -198,8 +198,8 @@ def multi_acc(y_pred, y_test):
     return acc
 
 
-def train(drums_df):
-    X_trainval, y_trainval, test_X, test_y, drum_class_labels = helper.prepare_data(drums_df)
+def train(drums_df, dataset_folder):
+    X_trainval, y_trainval, test_X, test_y, drum_class_labels = helper.prepare_data(drums_df, dataset_folder)
 
     # Split train into train-val
     train_X, val_X, train_y, val_y = train_test_split(X_trainval, y_trainval, test_size=0.1, stratify=y_trainval,
@@ -211,5 +211,6 @@ def train(drums_df):
 if __name__ == "__main__":
     parser = helper.create_global_parser()
     args = helper.parse_global_arguments(parser)
-    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / args.old / PathConfig.DATASET_WITH_FEATURES_FILENAME)
-    train(drums_df)
+    dataset_folder = args.old
+    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_WITH_FEATURES_FILENAME)
+    train(drums_df, dataset_folder)

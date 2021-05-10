@@ -50,7 +50,7 @@ def can_write(file_path):
         return file_path
 
 
-def prepare_data(drums_df):
+def prepare_data(drums_df, dataset_folder):
     drums_df_caped = drums_df.groupby('drum_type').head(TrainingConfig.N_SAMPLES_PER_CLASS)
     drum_type_labels, unique_labels = pd.factorize(drums_df_caped.drum_type)
     drums_df_labeled = drums_df_caped.assign(drum_type_labels=drum_type_labels)
@@ -64,10 +64,10 @@ def prepare_data(drums_df):
     test_np = drop_columns(val_clips_df, columns_to_drop)
 
     # There are occasionally random gaps in descriptors, so use imputation to fill in all values
-    train_np, test_np = imputer(train_np, test_np)
+    train_np, test_np = imputer(train_np, test_np, dataset_folder)
 
     # Standardize features by removing the mean and scaling to unit variance
-    train_np, test_np = scaler(train_np, test_np)
+    train_np, test_np = scaler(train_np, test_np, dataset_folder)
 
     return train_np, train_clips_df.drum_type_labels, test_np, val_clips_df.drum_type_labels, list(unique_labels.values)
 
@@ -79,23 +79,23 @@ def drop_columns(df, columns):
 
 
 # Use imputation to fill in all missing values
-def imputer(train_np, test_np):
+def imputer(train_np, test_np, dataset_folder):
     try:
-        imp = pickle.load(open(PathConfig.IMPUTATER_PATH, 'rb'))
+        imp = pickle.load(open(PathConfig.DATA_PATH / dataset_folder / PathConfig.IMPUTATER_FILENAME, 'rb'))
     except FileNotFoundError:
         logger.info(f'No cached imputer found, training')
         imp = TrainingConfig.iterative_imputer
         imp.fit(train_np)
-        pickle.dump(imp, open(PathConfig.IMPUTATER_PATH, 'wb'))
+        pickle.dump(imp, open(PathConfig.PICKLE_DATASETS_PATH/ dataset_folder / PathConfig.IMPUTATER_FILENAME, 'wb'))
     train_np = imp.transform(train_np)
     test_np = imp.transform(test_np)
     return train_np, test_np
 
 
 # Standardize the training and testing sets by removing the mean and scaling to unit variance
-def scaler(train_np, test_np):
+def scaler(train_np, test_np, dataset_folder):
     scaler = preprocessing.StandardScaler().fit(train_np)
     train_np = scaler.transform(train_np)
     test_np = scaler.transform(test_np)
-    pickle.dump(scaler, open(PathConfig.SCALER_PATH, 'wb'))
+    pickle.dump(scaler, open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.SCALER_FILENAME, 'wb'))
     return train_np, test_np

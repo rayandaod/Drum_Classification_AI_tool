@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import time
 import os
+import json
 
 from pathlib import Path
 
@@ -77,22 +78,31 @@ def read_drum_library(input_dir_path):
         print(" Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
                                                                       PreprocessingConfig.MAX_SAMPLE_DURATION))
 
+    # Create the dataset folder
+    folder_name = time.strftime("%Y%m%d-%H%M%S")
+    folder_path = PathConfig.PICKLE_DATASETS_PATH / folder_name
+    os.makedirs(folder_path)
+
     # Only keep the samples for which all the frames have an RMS above some threshold
     if GlobalConfig.VERBOSE:
         print('Filtering quiet outliers...')
     len_dataframe_2 = len(dataframe)
-    dataframe = filter_quiet_outliers(dataframe)
+    dataframe = filter_quiet_outliers(dataframe, folder_name)
     if GlobalConfig.VERBOSE:
         print(" Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
 
     # Save the pickle file in the right folder
-    folder_name = time.strftime("%Y%m%d-%H%M%S")
-    folder_path = PathConfig.PICKLE_DATASETS_PATH / folder_name
-    os.makedirs(folder_path)
     pickle.dump(dataframe, open(folder_path / "dataset.pkl", 'wb'))
 
-    # TODO: create metadata.json
-
+    # Create the metadata.json
+    metadata = {
+        "n_samples": str(dataframe.size),
+        "classes": {}
+    }
+    for drum_type in GlobalConfig.DRUM_TYPES:
+        metadata["classes"][drum_type] = str(dataframe[dataframe["class"] == drum_type].size)
+    with open(folder_path / PathConfig.METADATA_JSON_FILENAME, 'w') as outfile:
+        json.dump(metadata, outfile)
 
     return folder_name
 
@@ -165,7 +175,7 @@ def new_duration(row):
         return row["orig_duration"] - row["start_time"]
 
 
-def filter_quiet_outliers(drum_dataframe, max_frames=PreprocessingConfig.MAX_FRAMES,
+def filter_quiet_outliers(drum_dataframe, dataset_folder, max_frames=PreprocessingConfig.MAX_FRAMES,
                           max_rms_cutoff=PreprocessingConfig.MAX_RMS_CUTOFF, verbose=False):
     # Return a copy of the input dataframe without samples that are too quiet for a stable analysis
     # (RMS < 0.02 for all frames up to PreprocessingConfig.MAX_FRAMES (approximately 1 second))
@@ -182,7 +192,7 @@ def filter_quiet_outliers(drum_dataframe, max_frames=PreprocessingConfig.MAX_FRA
                 print(clip.audio_path)
         return result
 
-    with open(PathConfig.QUIET_OUTLIERS_PATH, 'w') as quiet_outliers_file:
+    with open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.QUIET_OUTLIERS_FILENAME, 'w') as quiet_outliers_file:
         df = drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
     return df
 

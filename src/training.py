@@ -20,8 +20,8 @@ def fit_and_predict(model, train_X, train_y, test_X, test_y, drum_class_labels):
     return model, test_X, test_y, drum_class_labels
 
 
-def train(drums_df, model_key, grid_search_key=None):
-    train_X, train_y, test_X, test_y, drum_class_labels = helper.prepare_data(drums_df)
+def train(drums_df, model_key, dataset_folder, grid_search_key=None):
+    train_X, train_y, test_X, test_y, drum_class_labels = helper.prepare_data(drums_df, dataset_folder)
     logger.info(f"{model_key}:")
 
     # grid_search_key is already checked to be part of the grid_search_dict (in TrainingConfig) when launching main.py
@@ -39,5 +39,8 @@ def train(drums_df, model_key, grid_search_key=None):
 
 
 if __name__ == "__main__":
-    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASET_WITH_FEATURES_PATH)
-    model, test_X, test_Y, labels = train(drums_df, "random_forest")
+    parser = helper.create_global_parser()
+    args = helper.parse_global_arguments(parser)
+    dataset_folder = args.old
+    drums_df = pd.read_pickle(PathConfig.DATA_PATH / dataset_folder / PathConfig.DATASET_WITH_FEATURES_FILENAME)
+    model, test_X, test_Y, labels = train(drums_df, "random_forest", dataset_folder)
