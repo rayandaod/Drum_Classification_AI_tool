@@ -17,7 +17,7 @@ class GlobalConfig:
 
 
 class PathConfig:
-    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/KSHMR Vol. 3"
+    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/"
     here = Path(__file__).parent
     DATA_PATH = here / '../data/'
 
@@ -42,6 +42,9 @@ class PathConfig:
 
     IMPUTATER_FILENAME = 'imputer.pkl'
     SCALER_FILENAME = 'scaler.pkl'
+
+    MODELS_PATH = here / '../models/'
+    MODEL_FILENAME = 'model.pth'
 
 
 class PreprocessingConfig:
@@ -69,23 +72,30 @@ class FeatureConfig:
 
 
 class TrainingConfig:
-    N_SAMPLES_PER_CLASS = 750
-    MODELS = {
-        'lr': LinearRegression(),
-        'svc': SVC(),
-        'random_forest': RandomForestClassifier(n_estimators=500),
-        'gb': GradientBoostingClassifier(n_estimators=200, learning_rate=0.1, max_depth=3, random_state=0),
-        'knn': KNeighborsClassifier(),
-        'nn': None,
-        'cnn': None
-    }
+    N_SAMPLES_PER_CLASS = None
 
-    iterative_imputer = IterativeImputer(max_iter=25, random_state=GlobalConfig.RANDOM_STATE)
-
-    grid_searches = {
-        'sweep_rf': {
-            'model_type': 'random forest',
-            "n_est_values": [100, 200, 500, 1000],
-            "depth_values": [10]
+    class SimpleTrainingConfig:
+        MODELS = {
+            'lr': LinearRegression(),
+            'svc': SVC(),
+            'random_forest': RandomForestClassifier(n_estimators=500),
+            'gb': GradientBoostingClassifier(n_estimators=200, learning_rate=0.1, max_depth=3, random_state=0),
+            'knn': KNeighborsClassifier(),
         }
-    }
+
+        iterative_imputer = IterativeImputer(max_iter=25, random_state=GlobalConfig.RANDOM_STATE)
+
+        grid_searches = {
+            'sweep_rf': {
+                'model_type': 'random forest',
+                "n_est_values": [100, 200, 500, 1000],
+                "depth_values": [10]
+            }
+        }
+
+    class NNTrainingConfig:
+        EPOCHS = 300
+        BATCH_SIZE = 16
+        LEARNING_RATE = 0.0007
+        VALIDATION_SET_RATIO = 0.1
+        DROPOUT_P = 0.2

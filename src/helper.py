@@ -3,6 +3,8 @@ import warnings
 import pickle
 import logging
 import pandas as pd
+import torch
+
 from os import path
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
@@ -51,7 +53,12 @@ def can_write(file_path):
 
 
 def prepare_data(drums_df, dataset_folder):
-    drums_df_caped = drums_df.groupby('drum_type').head(TrainingConfig.N_SAMPLES_PER_CLASS)
+    # Rather we cap the number of samples per class or not
+    if TrainingConfig.N_SAMPLES_PER_CLASS is not None:
+        drums_df_caped = drums_df.groupby('drum_type').head(TrainingConfig.N_SAMPLES_PER_CLASS)
+    else:
+        drums_df_caped = drums_df
+
     drum_type_labels, unique_labels = pd.factorize(drums_df_caped.drum_type)
     drums_df_labeled = drums_df_caped.assign(drum_type_labels=drum_type_labels)
 
@@ -69,6 +76,7 @@ def prepare_data(drums_df, dataset_folder):
     # Standardize features by removing the mean and scaling to unit variance
     train_np, test_np = scaler(train_np, test_np, dataset_folder)
 
+    print(list(unique_labels.values))
     return train_np, train_clips_df.drum_type_labels, test_np, val_clips_df.drum_type_labels, list(unique_labels.values)
 
 
@@ -84,7 +92,7 @@ def imputer(train_np, test_np, dataset_folder):
         imp = pickle.load(open(PathConfig.DATA_PATH / dataset_folder / PathConfig.IMPUTATER_FILENAME, 'rb'))
     except FileNotFoundError:
         logger.info(f'No cached imputer found, training')
-        imp = TrainingConfig.iterative_imputer
+        imp = TrainingConfig.SimpleTrainingConfig.iterative_imputer
         imp.fit(train_np)
         pickle.dump(imp, open(PathConfig.PICKLE_DATASETS_PATH/ dataset_folder / PathConfig.IMPUTATER_FILENAME, 'wb'))
     train_np = imp.transform(train_np)
@@ -99,3 +107,41 @@ def scaler(train_np, test_np, dataset_folder):
     test_np = scaler.transform(test_np)
     pickle.dump(scaler, open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.SCALER_FILENAME, 'wb'))
     return train_np, test_np
+
+
+# TODO: make sure these are the right classes
+def get_class_distribution(obj):
+    count_dict = {
+        "kick": 0,
+        "snare": 0,
+        "hat": 0,
+        "tom": 0
+    }
+
+    for i in obj:
+        if i == 0:
+            count_dict['hat'] += 1
+        elif i == 1:
+            count_dict['tom'] += 1
+        elif i == 2:
+            count_dict['snare'] += 1
+        elif i == 3:
+            count_dict['kick'] += 1
+        else:
+            print("Check classes.")
+
+    print(count_dict)
+
+    return count_dict
+
+
+def multi_acc(y_pred, y_test):
+    y_pred_softmax = torch.log_softmax(y_pred, dim=1)
+    _, y_pred_tags = torch.max(y_pred_softmax, dim=1)
+
+    correct_pred = (y_pred_tags == y_test).float()
+    acc = correct_pred.sum() / len(correct_pred)
+
+    acc = torch.round(acc * 100)
+
+    return acc

@@ -1,6 +1,9 @@
 local_stuff/
-help/
+~help/
 venv/
+
+models/*
+!models/.gitkeep
 
 data/*
 !data/.gitkeep

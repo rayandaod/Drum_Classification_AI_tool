@@ -1,20 +1,20 @@
 import logging
 import pandas as pd
 import torch
+import time
+import os
+import json
 
-import helper
-from config import PathConfig
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
-from tqdm.notebook import tqdm
+from sklearn.metrics import classification_report
+
+import helper
+from config import PathConfig, TrainingConfig, GlobalConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-EPOCHS = 300
-BATCH_SIZE = 16
-LEARNING_RATE = 0.0007
 
 
 class ClassifierDataset(Dataset):
@@ -40,7 +40,7 @@ class MulticlassClassification(nn.Module):
         self.layer_out = nn.Linear(16, num_class)
 
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=TrainingConfig.NNTrainingConfig.DROPOUT_P)
         self.batchnorm1 = nn.BatchNorm1d(64)
         self.batchnorm2 = nn.BatchNorm1d(32)
         self.batchnorm3 = nn.BatchNorm1d(16)
@@ -65,8 +65,7 @@ class MulticlassClassification(nn.Module):
         return x
 
 
-def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y, drum_class_labels):
-    # print(train_y)
+def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y):
     train_dataset = ClassifierDataset(torch.from_numpy(train_X).float(), torch.from_numpy(train_y).long())
     val_dataset = ClassifierDataset(torch.from_numpy(val_X).float(), torch.from_numpy(val_y).long())
     test_dataset = ClassifierDataset(torch.from_numpy(test_X).float(), torch.from_numpy(test_y).long())
@@ -74,11 +73,10 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y, drum_class_l
     target_list = []
     for _, t in train_dataset:
         target_list.append(t)
-
     target_list = torch.tensor(target_list)
     target_list = target_list[torch.randperm(len(target_list))]
 
-    class_count = [i for i in get_class_distribution(train_y).values()]
+    class_count = [i for i in helper.get_class_distribution(train_y).values()]
     class_weights = 1. / torch.tensor(class_count, dtype=torch.float)
 
     class_weights_all = class_weights[target_list]
@@ -90,7 +88,7 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y, drum_class_l
     )
 
     train_loader = DataLoader(dataset=train_dataset,
-                              batch_size=BATCH_SIZE,
+                              batch_size=TrainingConfig.NNTrainingConfig.BATCH_SIZE,
                               sampler=weighted_sampler
                               )
     val_loader = DataLoader(dataset=val_dataset, batch_size=1)
@@ -98,11 +96,11 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y, drum_class_l
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    model = MulticlassClassification(num_feature=train_X.shape[1], num_class=4)
+    model = MulticlassClassification(num_feature=train_X.shape[1], num_class=len(GlobalConfig.DRUM_TYPES))
     model.to(device)
 
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=TrainingConfig.NNTrainingConfig.LEARNING_RATE)
 
     print(model)
 
@@ -115,8 +113,8 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y, drum_class_l
         "val": []
     }
 
-    print("Begin training.")
-    for e in tqdm(range(1, EPOCHS + 1)):
+    logger.info("Begin training...")
+    for e in range(1, TrainingConfig.NNTrainingConfig.EPOCHS + 1):
         # TRAINING
         train_epoch_loss = 0
         train_epoch_acc = 0
@@ -128,7 +126,7 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y, drum_class_l
             y_train_pred = model(X_train_batch)
 
             train_loss = criterion(y_train_pred, y_train_batch)
-            train_acc = multi_acc(y_train_pred, y_train_batch)
+            train_acc = helper.multi_acc(y_train_pred, y_train_batch)
 
             train_loss.backward()
             optimizer.step()
@@ -149,68 +147,68 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y, drum_class_l
                 y_val_pred = model(X_val_batch)
 
                 val_loss = criterion(y_val_pred, y_val_batch)
-                val_acc = multi_acc(y_val_pred, y_val_batch)
+                val_acc = helper.multi_acc(y_val_pred, y_val_batch)
 
                 val_epoch_loss += val_loss.item()
                 val_epoch_acc += val_acc.item()
 
-    loss_stats['train'].append(train_epoch_loss / len(train_loader))
-    loss_stats['val'].append(val_epoch_loss / len(val_loader))
-    accuracy_stats['train'].append(train_epoch_acc / len(train_loader))
-    accuracy_stats['val'].append(val_epoch_acc / len(val_loader))
+        loss_stats['train'].append(train_epoch_loss / len(train_loader))
+        loss_stats['val'].append(val_epoch_loss / len(val_loader))
+        accuracy_stats['train'].append(train_epoch_acc / len(train_loader))
+        accuracy_stats['val'].append(val_epoch_acc / len(val_loader))
 
-    print(
-        f'Epoch {e + 0:03}: | Train Loss: {train_epoch_loss / len(train_loader):.5f} | Val Loss: {val_epoch_loss / len(val_loader):.5f} | Train Acc: {train_epoch_acc / len(train_loader):.3f}| Val Acc: {val_epoch_acc / len(val_loader):.3f}')
+        print(
+            f'Epoch {e + 0:03}: | Train Loss: {train_epoch_loss / len(train_loader):.5f} | Val Loss: {val_epoch_loss / len(val_loader):.5f} | Train Acc: {train_epoch_acc / len(train_loader):.3f}| Val Acc: {val_epoch_acc / len(val_loader):.3f}')
 
+    # TEST
+    y_pred_list = []
+    with torch.no_grad():
+        model.eval()
+        for X_batch, _ in test_loader:
+            X_batch = X_batch.to(device)
+            y_test_pred = model(X_batch)
+            _, y_pred_tags = torch.max(y_test_pred, dim=1)
+            y_pred_list.append(y_pred_tags.cpu().numpy())
+    y_pred_list = [a.squeeze().tolist() for a in y_pred_list]
 
-def get_class_distribution(obj):
-    count_dict = {
-        "kick": 0,
-        "snare": 0,
-        "hat": 0,
-        "tom": 0
+    print(classification_report(test_y, y_pred_list))
+
+    # Create the model folder
+    model_folder = time.strftime("%Y%m%d-%H%M%S")
+    folder_path = PathConfig.MODELS_PATH / model_folder
+    os.makedirs(folder_path)
+    torch.save(model, folder_path / PathConfig.MODEL_FILENAME)
+
+    # Create the metadata.json
+    metadata = {
+        "model_type": "FNN",
+        "n_samples_per_class": str(TrainingConfig.N_SAMPLES_PER_CLASS),
+        # "parameters": json.dumps(TrainingConfig.NNTrainingConfig.__dict__) TODO
     }
-
-    for i in obj:
-        if i == 0:
-            count_dict['kick'] += 1
-        elif i == 1:
-            count_dict['snare'] += 1
-        elif i == 2:
-            count_dict['hat'] += 1
-        elif i == 3:
-            count_dict['tom'] += 1
-        else:
-            print("Check classes.")
-
-    return count_dict
-
-
-def multi_acc(y_pred, y_test):
-    y_pred_softmax = torch.log_softmax(y_pred, dim=1)
-    _, y_pred_tags = torch.max(y_pred_softmax, dim=1)
-
-    correct_pred = (y_pred_tags == y_test).float()
-    acc = correct_pred.sum() / len(correct_pred)
-
-    acc = torch.round(acc * 100)
-
-    return acc
+    with open(folder_path / PathConfig.METADATA_JSON_FILENAME, 'w') as outfile:
+        json.dump(metadata, outfile)
 
 
 def train(drums_df, dataset_folder):
-    X_trainval, y_trainval, test_X, test_y, drum_class_labels = helper.prepare_data(drums_df, dataset_folder)
-
-    # Split train into train-val
-    train_X, val_X, train_y, val_y = train_test_split(X_trainval, y_trainval, test_size=0.1, stratify=y_trainval,
-                                                      random_state=21)
     logger.info("model: Deep NN")
-    return fit_and_predict(train_X, train_y.to_numpy(), val_X, val_y.to_numpy(), test_X, test_y.to_numpy(), drum_class_labels)
+
+    # Split the whole dataset in a train-val and a test set
+    X_trainval, y_trainval, test_X, test_y, _ = helper.prepare_data(drums_df, dataset_folder)
+
+    # Split train-val into a training set and  a validation set
+    train_X, val_X, train_y, val_y = train_test_split(X_trainval, y_trainval,
+                                                      test_size=TrainingConfig.NNTrainingConfig.VALIDATION_SET_RATIO,
+                                                      stratify=y_trainval,
+                                                      random_state=GlobalConfig.RANDOM_STATE)
+
+    return fit_and_predict(train_X, train_y.to_numpy(), val_X, val_y.to_numpy(), test_X, test_y.to_numpy())
 
 
 if __name__ == "__main__":
     parser = helper.create_global_parser()
     args = helper.parse_global_arguments(parser)
     dataset_folder = args.old
-    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_WITH_FEATURES_FILENAME)
+
+    drums_df = pd.read_pickle(
+        PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_WITH_FEATURES_FILENAME)
     train(drums_df, dataset_folder)
