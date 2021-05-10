@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 def read_drum_library(input_dir_path):
     logger.info(f'Searching for audio files found in {input_dir_path}...')
     dataframe_rows = []
+
+    # Create the dataset folder
+    folder_name = time.strftime("%Y%m%d-%H%M%S")
+    folder_path = PathConfig.PICKLE_DATASETS_PATH / folder_name
+    os.makedirs(folder_path)
+
     for input_file in Path(input_dir_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
         if GlobalConfig.VERBOSE:
@@ -28,7 +34,7 @@ def read_drum_library(input_dir_path):
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
-        drum_class = assign_class(absolute_path_name, file_stem)
+        drum_class = assign_class(absolute_path_name, file_stem, folder_name)
 
         # Skip the recordings that do not belong to any of our classes
         if drum_class is None:
@@ -78,11 +84,6 @@ def read_drum_library(input_dir_path):
         print(" Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
                                                                       PreprocessingConfig.MAX_SAMPLE_DURATION))
 
-    # Create the dataset folder
-    folder_name = time.strftime("%Y%m%d-%H%M%S")
-    folder_path = PathConfig.PICKLE_DATASETS_PATH / folder_name
-    os.makedirs(folder_path)
-
     # Only keep the samples for which all the frames have an RMS above some threshold
     if GlobalConfig.VERBOSE:
         print('Filtering quiet outliers...')
@@ -107,7 +108,7 @@ def read_drum_library(input_dir_path):
     return folder_name
 
 
-def assign_class(absolute_path, file_stem):
+def assign_class(absolute_path, file_stem, dataset_folder):
     """
     Assigns a class to the sample, excluding keywords in blacklist.
     :param absolute_path: The absolute path of the current sample
@@ -119,13 +120,16 @@ def assign_class(absolute_path, file_stem):
         # "kick" for example)
         if drum_type in file_stem.lower() or drum_type in absolute_path.lower():
 
-            blacklist_file = open(PathConfig.BLACKLIST_PATH)
-            for line in blacklist_file:
-                blacklist = line.split(",")
-                for b in blacklist:
-                    if b in absolute_path.lower():
-                        print("{} blacklisted".format(absolute_path))
-                        return None
+            # TODO: not working
+            with open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.BLACKLISTED_FILES_FILENAME, "w") \
+                    as blacklisted_files:
+                blacklist_file = open(PathConfig.BLACKLIST_PATH)
+                for line in blacklist_file:
+                    blacklist = line.split(",")
+                    for b in blacklist:
+                        if b in absolute_path.lower():
+                            blacklisted_files.write("\n{}".format(absolute_path))
+                            return None
 
             ignoring_file = open(PathConfig.IGNORE_PATH)
             for line in ignoring_file:
@@ -192,7 +196,8 @@ def filter_quiet_outliers(drum_dataframe, dataset_folder, max_frames=Preprocessi
                 print(clip.audio_path)
         return result
 
-    with open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.QUIET_OUTLIERS_FILENAME, 'w') as quiet_outliers_file:
+    with open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.QUIET_OUTLIERS_FILENAME, 'w') as \
+            quiet_outliers_file:
         df = drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
     return df
 
