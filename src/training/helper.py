@@ -1,58 +1,17 @@
-import os
-import warnings
 import pickle
-import logging
 import pandas as pd
 import torch
-from os import path
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
-from argparse import ArgumentParser
 
-import paths
+from src import *
 from config import TrainingConfig, GlobalConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def global_parser():
-    parser = ArgumentParser()
-    parser.add_argument('--reload', action='store_true', dest='reload',
-                        help='Reload the drum library and extract the features again.')
-    parser.add_argument('--old', type=str, default=None, help='Select an already loaded dataset')
-    parser.add_argument('--verbose', action='store_true', dest='verbose',
-                        help='Print useful data for debugging')
-    parser.set_defaults(reload=False)
-    parser.set_defaults(verbose=False)
-    return parser
-
-
-def parse_args(parser):
-    args = parser.parse_args()
-
-    GlobalConfig.RELOAD = args.reload
-    logger.info(f"Reload = {GlobalConfig.RELOAD}")
-
-    GlobalConfig.VERBOSE = args.verbose
-    logger.info(f"Verbose = {GlobalConfig.VERBOSE}")
-
-    return args
-
-
-# Check that the given file path does not already exists.
-# If it does, add "_new" at the end (before the extension)
-# If it doesn't, simply return the originally given path
-def can_write(file_path):
-    if path.exists(file_path):
-        warnings.warn("The given path already exists, adding \"_new\" at the end.")
-        path_split = os.path.splitext(file_path)
-        return can_write(path_split[0] + "_new" + path_split[1])
-    else:
-        return file_path
-
-
-def prepare_data(data_prep_config, drums_df, dataset_folder):
+def prep_data_b4_training(data_prep_config, drums_df, dataset_folder):
     # Rather we cap the number of samples per class or not
     if data_prep_config.N_SAMPLES_PER_CLASS is not None:
         drums_df_caped = drums_df.groupby('drum_type').head(data_prep_config.N_SAMPLES_PER_CLASS)
@@ -89,12 +48,12 @@ def drop_columns(df, columns):
 # Use imputation to fill in all missing values
 def imputer(train_np, test_np, dataset_folder):
     try:
-        imp = pickle.load(open(paths.DATA_PATH / dataset_folder / paths.IMPUTATER_FILENAME, 'rb'))
+        imp = pickle.load(open(DATA_PATH / dataset_folder / IMPUTATER_FILENAME, 'rb'))
     except FileNotFoundError:
         logger.info(f'No cached imputer found, training')
         imp = TrainingConfig.SimpleTrainingConfig.iterative_imputer
         imp.fit(train_np)
-        pickle.dump(imp, open(paths.PICKLE_DATASETS_PATH/ dataset_folder / paths.IMPUTATER_FILENAME, 'wb'))
+        pickle.dump(imp, open(PICKLE_DATASETS_PATH/ dataset_folder / IMPUTATER_FILENAME, 'wb'))
     train_np = imp.transform(train_np)
     test_np = imp.transform(test_np)
     return train_np, test_np
@@ -105,7 +64,7 @@ def scaler(train_np, test_np, dataset_folder):
     scaler = preprocessing.StandardScaler().fit(train_np)
     train_np = scaler.transform(train_np)
     test_np = scaler.transform(test_np)
-    pickle.dump(scaler, open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.SCALER_FILENAME, 'wb'))
+    pickle.dump(scaler, open(PICKLE_DATASETS_PATH / dataset_folder / SCALER_FILENAME, 'wb'))
     return train_np, test_np
 
 

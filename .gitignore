@@ -8,6 +8,8 @@ models/*
 data/*
 !data/.gitkeep
 !data/augmented_data/
+!data/to_blacklist.txt
+!data/to_ignore.txt
 
 data/augmented_data/*
 !data/augmented_data/time_stretched/

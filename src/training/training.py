@@ -1,11 +1,9 @@
-import logging
 import pandas as pd
-from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 
-import helper
-import paths
+from src import *
+from training import helper
 from config import TrainingConfig, DataPrepConfig
 
 logging.basicConfig(level=logging.INFO)
@@ -23,8 +21,8 @@ def fit_and_predict(model, train_X, train_y, test_X, test_y, drum_class_labels):
 
 def train(drums_df, model_key, dataset_folder, grid_search_key=None):
     data_prep_config = DataPrepConfig()
-    train_X, train_y, test_X, test_y, drum_class_labels = helper.prepare_data(data_prep_config, drums_df,
-                                                                              dataset_folder)
+    train_X, train_y, test_X, test_y, drum_class_labels = helper.prep_data_b4_training(data_prep_config, drums_df,
+                                                                                       dataset_folder)
     logger.info(f"{model_key}:")
 
     # grid_search_key is already checked to be part of the grid_search_dict (in TrainingConfig) when launching main.py
@@ -42,8 +40,9 @@ def train(drums_df, model_key, dataset_folder, grid_search_key=None):
 
 
 if __name__ == "__main__":
-    parser = helper.global_parser()
-    args = helper.parse_args(parser)
+    parser = global_parser()
+    args = parse_args(parser)
     dataset_folder = args.old
-    drums_df = pd.read_pickle(paths.DATA_PATH / dataset_folder / paths.DATASET_WITH_FEATURES_FILENAME)
+
+    drums_df = pd.read_pickle(DATA_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
     model, test_X, test_Y, labels = train(drums_df, "random_forest", dataset_folder)

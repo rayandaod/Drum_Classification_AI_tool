@@ -1,3 +1,4 @@
+import warnings
 import os
 import audioread
 import audioop
@@ -8,6 +9,18 @@ import numpy as np
 from config import GlobalConfig
 
 logger = logging.getLogger(__name__)
+
+
+# Check that the given file path does not already exists.
+# If it does, add "_new" at the end (before the extension)
+# If it doesn't, simply return the originally given path
+def can_write(file_path):
+    if os.path.exists(file_path):
+        warnings.warn("The given path already exists, adding \"_new\" at the end.")
+        path_split = os.path.splitext(file_path)
+        return can_write(path_split[0] + "_new" + path_split[1])
+    else:
+        return file_path
 
 
 def can_load_audio(path_string):

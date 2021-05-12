@@ -1,4 +1,3 @@
-import logging
 import librosa
 import pickle
 import math
@@ -8,11 +7,8 @@ import time
 import os
 import json
 
-from pathlib import Path
-
-import read_audio
-import helper
-import paths
+from src import *
+from data_to_features import helper
 from config import GlobalConfig, PreprocessingConfig
 
 logger = logging.getLogger(__name__)
@@ -24,14 +20,14 @@ def read_drum_library(input_dir_path):
 
     # Create the dataset folder
     folder_name = time.strftime("%Y%m%d-%H%M%S")
-    folder_path = paths.PICKLE_DATASETS_PATH / folder_name
+    folder_path = PICKLE_DATASETS_PATH / folder_name
     os.makedirs(folder_path)
 
     for input_file in Path(input_dir_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
         if GlobalConfig.VERBOSE:
             print(absolute_path_name[len(input_dir_path) + 1:])
-        if not read_audio.can_load_audio(absolute_path_name):
+        if not helper.can_load_audio(absolute_path_name):
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
@@ -103,7 +99,7 @@ def read_drum_library(input_dir_path):
     }
     for drum_type in GlobalConfig.DRUM_TYPES:
         metadata["classes"][drum_type] = str(dataframe[dataframe["class"] == drum_type].size)
-    with open(folder_path / paths.METADATA_JSON_FILENAME, 'w') as outfile:
+    with open(folder_path / METADATA_JSON_FILENAME, 'w') as outfile:
         json.dump(metadata, outfile)
 
     return folder_name
@@ -122,9 +118,9 @@ def assign_class(absolute_path, file_stem, dataset_folder):
         if drum_type in file_stem.lower() or drum_type in absolute_path.lower():
 
             # TODO: not working
-            with open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.BLACKLISTED_FILES_FILENAME, "w") \
+            with open(PICKLE_DATASETS_PATH / dataset_folder / BLACKLISTED_FILES_FILENAME, "w") \
                     as blacklisted_files:
-                blacklist_file = open(paths.BLACKLIST_PATH)
+                blacklist_file = open(BLACKLIST_PATH)
                 for line in blacklist_file:
                     blacklist = line.split(",")
                     for b in blacklist:
@@ -132,7 +128,7 @@ def assign_class(absolute_path, file_stem, dataset_folder):
                             blacklisted_files.write("\n{}".format(absolute_path))
                             return None
 
-            ignoring_file = open(paths.IGNORE_PATH)
+            ignoring_file = open(IGNORE_PATH)
             for line in ignoring_file:
                 to_ignore = line.split(",")
                 for ig in to_ignore:
@@ -197,7 +193,7 @@ def filter_quiet_outliers(drum_dataframe, dataset_folder, max_frames=Preprocessi
                 print(clip.audio_path)
         return result
 
-    with open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.QUIET_OUTLIERS_FILENAME, 'w') as \
+    with open(PICKLE_DATASETS_PATH / dataset_folder / QUIET_OUTLIERS_FILENAME, 'w') as \
             quiet_outliers_file:
         df = drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
     return df
@@ -205,15 +201,15 @@ def filter_quiet_outliers(drum_dataframe, dataset_folder, max_frames=Preprocessi
 
 def load_drums_df(dataset_folder):
     if GlobalConfig.RELOAD:
-        dataset_folder = read_drum_library(paths.SAMPLE_LIBRARY)
+        dataset_folder = read_drum_library(SAMPLE_LIBRARY)
     if dataset_folder is not None:
-        drums_df = pd.read_pickle(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.DATASET_FILENAME)
+        drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
     else:
         raise Exception('dataset_folder is None, please specify the dataset_folder name.')
     return drums_df, dataset_folder
 
 
 if __name__ == "__main__":
-    parser = helper.global_parser()
-    args = helper.parse_args(parser)
+    parser = global_parser()
+    args = parse_args(parser)
     load_drums_df(args.old)

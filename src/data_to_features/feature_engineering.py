@@ -5,10 +5,9 @@ import pandas as pd
 from typing import Dict
 import json
 
+from src import *
 from config import GlobalConfig, FeatureConfig
-import read_audio
-import paths
-import helper
+from data_to_features import helper
 
 
 def extract_single(raw_audio):
@@ -232,7 +231,7 @@ def extract_all_helper(clip, features_dict_list):
     # Load the raw audio of the current clip/row
     # Note that load_clip_audio is used rather than load_raw_audio, in order to take into account the changes in
     # start_time, end_time, ... (due to loop trimming)
-    raw_audio = read_audio.load_clip_audio(clip)
+    raw_audio = helper.load_clip_audio(clip)
 
     # Extract the features for a single row
     features_dict = extract_single(raw_audio)
@@ -250,17 +249,17 @@ def extract_all(drums_df, dataset_folder):
         drums_df.apply(lambda row: extract_all_helper(row, features_dict_list), axis=1)
         drums_df_with_features = pd.DataFrame(features_dict_list)
         pickle.dump(drums_df_with_features,
-                    open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.DATASET_WITH_FEATURES_FILENAME,
+                    open(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME,
                          'wb'))
     else:
         drums_df_with_features = pd.read_pickle(
-            paths.PICKLE_DATASETS_PATH / dataset_folder / paths.DATASET_FILENAME)
+            PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
 
     features_list = []
     for col_name in drums_df_with_features.columns:
         features_list.append(col_name)
     features_dict = {"features": features_list}
-    with open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.METADATA_JSON_FILENAME, "r+") as file:
+    with open(PICKLE_DATASETS_PATH / dataset_folder / METADATA_JSON_FILENAME, "r+") as file:
         data = json.load(file)
         data.update(features_dict)
         file.seek(0)
@@ -270,9 +269,10 @@ def extract_all(drums_df, dataset_folder):
 
 
 if __name__ == "__main__":
-    parser = helper.global_parser()
-    args = helper.parse_args(parser)
+    parser = global_parser()
+    args = parse_args(parser)
     dataset_folder = args.old
-    drums_df = pd.read_pickle(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.DATASET_FILENAME)
+
+    drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
     extract_all(drums_df, dataset_folder)
 

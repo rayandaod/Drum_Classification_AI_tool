@@ -1,4 +1,3 @@
-import logging
 import pandas as pd
 import torch
 import time
@@ -11,8 +10,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from torchsummary import summary
 
-import helper
-import paths
+from src import *
+from training import helper
 from config import TrainingConfig, GlobalConfig, DataPrepConfig
 
 logging.basicConfig(level=logging.INFO)
@@ -181,7 +180,7 @@ def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, t
 
 def prepare_data(data_prep_config, drums_df, dataset_folder):
     logger.info("Preparing data...")
-    X_trainval, y_trainval, X_test, y_test, _ = helper.prepare_data(data_prep_config, drums_df, dataset_folder)
+    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df, dataset_folder)
     X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval,
                                                       test_size=data_prep_config.VALIDATION_SET_RATIO,
                                                       stratify=y_trainval,
@@ -193,16 +192,16 @@ def prepare_data(data_prep_config, drums_df, dataset_folder):
 def save_model(model, data_prep_config, nn_training_config):
     logger.info("Saving model...")
     model_folder = time.strftime("%Y%m%d-%H%M%S")
-    folder_path = paths.MODELS_PATH / model_folder
+    folder_path = MODELS_PATH / model_folder
     os.makedirs(folder_path)
-    torch.save(model, folder_path / paths.MODEL_FILENAME)
+    torch.save(model, folder_path / MODEL_FILENAME)
     metadata = {
         "training_params": json.dumps(data_prep_config.__dict__),
         "NN_training params": json.dumps(nn_training_config.__dict__),
         "model_name": model.name,
         "model_summary": summary(model, (1, nn_training_config.N_INPUT))
     }
-    with open(folder_path / paths.METADATA_JSON_FILENAME, 'w') as outfile:
+    with open(folder_path / METADATA_JSON_FILENAME, 'w') as outfile:
         json.dump(metadata, outfile)
 
 
@@ -226,13 +225,13 @@ def run(drums_df, dataset_folder):
 
 if __name__ == "__main__":
     # Load the parser
-    parser = helper.global_parser()
-    args = helper.parse_args(parser)
+    parser = global_parser()
+    args = parse_args(parser)
     dataset_folder_name = args.old
 
     # Load the dataset
     drums_df = pd.read_pickle(
-        paths.PICKLE_DATASETS_PATH / dataset_folder_name / paths.DATASET_WITH_FEATURES_FILENAME)
+        PICKLE_DATASETS_PATH / dataset_folder_name / DATASET_WITH_FEATURES_FILENAME)
 
     # Start the training
     run(drums_df, dataset_folder_name)
