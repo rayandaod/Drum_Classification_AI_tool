@@ -52,10 +52,10 @@ def can_write(file_path):
         return file_path
 
 
-def prepare_data(drums_df, dataset_folder):
+def prepare_data(data_prep_config, drums_df, dataset_folder):
     # Rather we cap the number of samples per class or not
-    if TrainingConfig.N_SAMPLES_PER_CLASS is not None:
-        drums_df_caped = drums_df.groupby('drum_type').head(TrainingConfig.N_SAMPLES_PER_CLASS)
+    if data_prep_config.N_SAMPLES_PER_CLASS is not None:
+        drums_df_caped = drums_df.groupby('drum_type').head(data_prep_config.N_SAMPLES_PER_CLASS)
     else:
         drums_df_caped = drums_df
 

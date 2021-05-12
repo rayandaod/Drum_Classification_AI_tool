@@ -71,15 +71,21 @@ class FeatureConfig:
     }
 
 
-class TrainingConfig:
-    N_SAMPLES_PER_CLASS = None
+class DataPrepConfig:
+    def __init__(self):
+        # Data preparation variables
+        self.N_SAMPLES_PER_CLASS = None
+        self.VALIDATION_SET_RATIO = 0.1
 
+
+class TrainingConfig:
     class SimpleTrainingConfig:
         MODELS = {
             'lr': LinearRegression(),
             'svc': SVC(),
             'random_forest': RandomForestClassifier(n_estimators=500),
-            'gb': GradientBoostingClassifier(n_estimators=200, learning_rate=0.1, max_depth=3, random_state=0),
+            'gb': GradientBoostingClassifier(n_estimators=200, learning_rate=0.1, max_depth=3,
+                                             random_state=GlobalConfig.RANDOM_STATE),
             'knn': KNeighborsClassifier(),
         }
 
@@ -93,9 +99,10 @@ class TrainingConfig:
             }
         }
 
+    # Implemented this way in order to easily serialize it to JSON
     class NNTrainingConfig:
-        EPOCHS = 300
-        BATCH_SIZE = 16
-        LEARNING_RATE = 0.0007
-        VALIDATION_SET_RATIO = 0.1
-        DROPOUT_P = 0.2
+        def __init__(self):
+            self.EPOCHS = 300  # Plot the learning curves
+            self.BATCH_SIZE = 16
+            self.LEARNING_RATE = 0.0007  # test factor 10 below and above, learning rate schedule?
+            self.DROPOUT_P = 0.2

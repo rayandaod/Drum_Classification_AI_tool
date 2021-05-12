@@ -5,7 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 
 import helper
-from config import TrainingConfig, PathConfig
+from config import TrainingConfig, PathConfig, DataPrepConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +21,9 @@ def fit_and_predict(model, train_X, train_y, test_X, test_y, drum_class_labels):
 
 
 def train(drums_df, model_key, dataset_folder, grid_search_key=None):
-    train_X, train_y, test_X, test_y, drum_class_labels = helper.prepare_data(drums_df, dataset_folder)
+    data_prep_config = DataPrepConfig()
+    train_X, train_y, test_X, test_y, drum_class_labels = helper.prepare_data(data_prep_config, drums_df,
+                                                                              dataset_folder)
     logger.info(f"{model_key}:")
 
     # grid_search_key is already checked to be part of the grid_search_dict (in TrainingConfig) when launching main.py

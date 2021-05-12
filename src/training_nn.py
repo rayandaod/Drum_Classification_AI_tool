@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 
 import helper
-from config import PathConfig, TrainingConfig, GlobalConfig
+from config import PathConfig, TrainingConfig, GlobalConfig, DataPrepConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class MulticlassClassification(nn.Module):
         return x
 
 
-def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y):
+def fit_and_predict(nn_training_config, train_X, train_y, val_X, val_y, test_X, test_y):
     train_dataset = ClassifierDataset(torch.from_numpy(train_X).float(), torch.from_numpy(train_y).long())
     val_dataset = ClassifierDataset(torch.from_numpy(val_X).float(), torch.from_numpy(val_y).long())
     test_dataset = ClassifierDataset(torch.from_numpy(test_X).float(), torch.from_numpy(test_y).long())
@@ -88,7 +88,7 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y):
     )
 
     train_loader = DataLoader(dataset=train_dataset,
-                              batch_size=TrainingConfig.NNTrainingConfig.BATCH_SIZE,
+                              batch_size=nn_training_config.BATCH_SIZE,
                               sampler=weighted_sampler
                               )
     val_loader = DataLoader(dataset=val_dataset, batch_size=1)
@@ -100,7 +100,7 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y):
     model.to(device)
 
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = optim.Adam(model.parameters(), lr=TrainingConfig.NNTrainingConfig.LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=nn_training_config.LEARNING_RATE)
 
     print(model)
 
@@ -114,7 +114,7 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y):
     }
 
     logger.info("Begin training...")
-    for e in range(1, TrainingConfig.NNTrainingConfig.EPOCHS + 1):
+    for e in range(1, nn_training_config.EPOCHS + 1):
         # TRAINING
         train_epoch_loss = 0
         train_epoch_acc = 0
@@ -173,35 +173,36 @@ def fit_and_predict(train_X, train_y, val_X, val_y, test_X, test_y):
 
     print(classification_report(test_y, y_pred_list))
 
-    # Create the model folder
-    model_folder = time.strftime("%Y%m%d-%H%M%S")
-    folder_path = PathConfig.MODELS_PATH / model_folder
-    os.makedirs(folder_path)
-    torch.save(model, folder_path / PathConfig.MODEL_FILENAME)
-
-    # Create the metadata.json
-    metadata = {
-        "model_type": "FNN",
-        "n_samples_per_class": str(TrainingConfig.N_SAMPLES_PER_CLASS),
-        # "parameters": json.dumps(TrainingConfig.NNTrainingConfig.__dict__) TODO
-    }
-    with open(folder_path / PathConfig.METADATA_JSON_FILENAME, 'w') as outfile:
-        json.dump(metadata, outfile)
+    return model
 
 
 def train(drums_df, dataset_folder):
     logger.info("model: Deep NN")
 
-    # Split the whole dataset in a train-val and a test set
-    X_trainval, y_trainval, test_X, test_y, _ = helper.prepare_data(drums_df, dataset_folder)
-
-    # Split train-val into a training set and  a validation set
+    # PREPARE DATA
+    data_prep_config = DataPrepConfig()
+    X_trainval, y_trainval, test_X, test_y, _ = helper.prepare_data(data_prep_config, drums_df, dataset_folder)
     train_X, val_X, train_y, val_y = train_test_split(X_trainval, y_trainval,
-                                                      test_size=TrainingConfig.NNTrainingConfig.VALIDATION_SET_RATIO,
+                                                      test_size=data_prep_config.VALIDATION_SET_RATIO,
                                                       stratify=y_trainval,
                                                       random_state=GlobalConfig.RANDOM_STATE)
 
-    return fit_and_predict(train_X, train_y.to_numpy(), val_X, val_y.to_numpy(), test_X, test_y.to_numpy())
+    # TRAIN
+    nn_training_config = TrainingConfig.NNTrainingConfig()
+    model = fit_and_predict(nn_training_config, train_X, train_y.to_numpy(), val_X, val_y.to_numpy(), test_X, test_y.to_numpy())
+
+    # Save model and metadata
+    model_folder = time.strftime("%Y%m%d-%H%M%S")
+    folder_path = PathConfig.MODELS_PATH / model_folder
+    os.makedirs(folder_path)
+    torch.save(model, folder_path / PathConfig.MODEL_FILENAME)
+    metadata = {
+        "model_type": "FNN",
+        "training_params": json.dumps(data_prep_config.__dict__),
+        "NN_training params": json.dumps(nn_training_config.__dict__)
+    }
+    with open(folder_path / PathConfig.METADATA_JSON_FILENAME, 'w') as outfile:
+        json.dump(metadata, outfile)
 
 
 if __name__ == "__main__":

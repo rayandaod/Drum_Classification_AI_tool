@@ -1,7 +1,7 @@
 import logging
 from argparse import ArgumentParser
 
-from config import SimpleTrainingConfig, GlobalConfig
+from config import TrainingConfig, GlobalConfig
 import preprocessing
 import feature_engineering
 import training
@@ -16,11 +16,11 @@ if __name__ == "__main__":
     parser = helper.create_global_parser()
 
     # Add more arguments to the loaded global parser
-    parser.add_argument('--sweep', type=str, default=None, choices=SimpleTrainingConfig.grid_searches.keys(),
+    parser.add_argument('--sweep', type=str, default=None, choices=TrainingConfig.SimpleTrainingConfig.grid_searches.keys(),
                         help='Run a gridSearch based on the hyper-parameters in config.py')
     parser.add_argument('--seed', type=int, default=None,
                         help='Set up a random state to have the same train-test-datasets across different runs')
-    parser.add_argument('--model', type=str, default="random_forest", choices=SimpleTrainingConfig.MODELS,
+    parser.add_argument('--model', type=str, default="random_forest", choices=TrainingConfig.SimpleTrainingConfig.MODELS,
                         help='Choose a model to train with')
 
     # Parse the global arguments and the new ones
