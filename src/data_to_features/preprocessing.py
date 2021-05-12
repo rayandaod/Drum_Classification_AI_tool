@@ -201,7 +201,7 @@ def filter_quiet_outliers(drum_dataframe, dataset_folder, max_frames=Preprocessi
 
 def load_drums_df(dataset_folder):
     if GlobalConfig.RELOAD:
-        dataset_folder = read_drum_library(SAMPLE_LIBRARY)
+        dataset_folder = read_drum_library(GlobalConfig.SAMPLE_LIBRARY)
     if dataset_folder is not None:
         drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
     else:

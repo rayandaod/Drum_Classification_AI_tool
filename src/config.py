@@ -8,7 +8,9 @@ from sklearn.impute import IterativeImputer
 
 
 class GlobalConfig:
+    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/"
     DRUM_TYPES = ['kick', 'snare', 'hat', 'tom']
+
     DEFAULT_SR = 22050
     RANDOM_STATE = None
     RELOAD = False

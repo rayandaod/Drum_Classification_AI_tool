@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/"
 here = Path(__file__).parent
 DATA_PATH = here / '../data/'
 
