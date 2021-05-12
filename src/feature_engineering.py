@@ -5,8 +5,9 @@ import pandas as pd
 from typing import Dict
 import json
 
-from config import GlobalConfig, FeatureConfig, PathConfig
+from config import GlobalConfig, FeatureConfig
 import read_audio
+import paths
 import helper
 
 
@@ -249,17 +250,17 @@ def extract_all(drums_df, dataset_folder):
         drums_df.apply(lambda row: extract_all_helper(row, features_dict_list), axis=1)
         drums_df_with_features = pd.DataFrame(features_dict_list)
         pickle.dump(drums_df_with_features,
-                    open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_WITH_FEATURES_FILENAME,
+                    open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.DATASET_WITH_FEATURES_FILENAME,
                          'wb'))
     else:
         drums_df_with_features = pd.read_pickle(
-            PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_FILENAME)
+            paths.PICKLE_DATASETS_PATH / dataset_folder / paths.DATASET_FILENAME)
 
     features_list = []
     for col_name in drums_df_with_features.columns:
         features_list.append(col_name)
     features_dict = {"features": features_list}
-    with open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.METADATA_JSON_FILENAME, "r+") as file:
+    with open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.METADATA_JSON_FILENAME, "r+") as file:
         data = json.load(file)
         data.update(features_dict)
         file.seek(0)
@@ -269,9 +270,9 @@ def extract_all(drums_df, dataset_folder):
 
 
 if __name__ == "__main__":
-    parser = helper.create_global_parser()
-    args = helper.parse_global_arguments(parser)
+    parser = helper.global_parser()
+    args = helper.parse_args(parser)
     dataset_folder = args.old
-    drums_df = pd.read_pickle(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.DATASET_FILENAME)
+    drums_df = pd.read_pickle(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.DATASET_FILENAME)
     extract_all(drums_df, dataset_folder)
 

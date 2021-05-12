@@ -3,7 +3,8 @@ import os
 import soundfile as sf
 
 import helper
-from config import GlobalConfig, PathConfig
+import paths
+from config import GlobalConfig
 
 
 def time_stretch(raw_audio, stretch_factor, file_path, sr=GlobalConfig.DEFAULT_SR):
@@ -15,7 +16,7 @@ def time_stretch(raw_audio, stretch_factor, file_path, sr=GlobalConfig.DEFAULT_S
     file_path_wo_slash = min_path_wo_slash(file_path)
 
     # Create the new file path (to point to the data/time_stretched/ folder)
-    new_file_path = os.path.join(PathConfig.TIME_STRETCHED_PATH, "{}_{}".format(stretch_factor, file_path_wo_slash))
+    new_file_path = os.path.join(paths.TIME_STRETCHED_PATH, "{}_{}".format(stretch_factor, file_path_wo_slash))
 
     # Write the time_stretched audio at the right path
     new_file_path = helper.can_write(new_file_path)
@@ -32,7 +33,7 @@ def pitch_shift(raw_audio, semitones, file_path, sr=GlobalConfig.DEFAULT_SR):
     file_path_wo_slash = min_path_wo_slash(file_path)
 
     # Create the new file path (to point to the data/time_stretched/ folder)
-    new_file_path = os.path.join(PathConfig.PITCH_SHIFTED_PATH, "{}_{}".format(semitones, file_path_wo_slash))
+    new_file_path = os.path.join(paths.PITCH_SHIFTED_PATH, "{}_{}".format(semitones, file_path_wo_slash))
 
     # Write the time_stretched audio at the right path
     new_file_path = helper.can_write(new_file_path)
@@ -44,7 +45,7 @@ def pitch_shift(raw_audio, semitones, file_path, sr=GlobalConfig.DEFAULT_SR):
 # Retrieve a minimised version of a file path, with the slashes ("/") replaced with "__"
 def min_path_wo_slash(file_path):
     # Only retrieve the file_path after the sample library path
-    file_path_minimized = file_path.replace(PathConfig.SAMPLE_LIBRARY + "/", "")
+    file_path_minimized = file_path.replace(paths.SAMPLE_LIBRARY + "/", "")
 
     # Replace the slashes with __, otherwise the path where to write is not recognised
     return file_path_minimized.replace("/", "__")

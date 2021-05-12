@@ -1,5 +1,4 @@
 import logging
-from argparse import ArgumentParser
 
 from config import TrainingConfig, GlobalConfig
 import preprocessing
@@ -11,9 +10,10 @@ import helper
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-if __name__ == "__main__":
 
-    parser = helper.create_global_parser()
+def parse_args():
+    # Load the global parser
+    parser = helper.global_parser()
 
     # Add more arguments to the loaded global parser
     parser.add_argument('--sweep', type=str, default=None, choices=TrainingConfig.SimpleTrainingConfig.grid_searches.keys(),
@@ -24,12 +24,17 @@ if __name__ == "__main__":
                         help='Choose a model to train with')
 
     # Parse the global arguments and the new ones
-    args = helper.parse_global_arguments(parser)
+    args = helper.parse_args(parser)
 
     # Set the new value for RANDOM_STATE
     GlobalConfig.RANDOM_STATE = args.seed
     logger.info(f"Random state = {GlobalConfig.RANDOM_STATE}")
 
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
     drums_df, dataset_folder = preprocessing.load_drums_df(dataset_folder=args.old)
     # TODO: add an optional or automatic use of data augmentation here + append to previous dataframe
     drums_df = data_augmentation.augment_data(drums_df, dataset_folder)  # useless for now

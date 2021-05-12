@@ -5,7 +5,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 
 import helper
-from config import TrainingConfig, PathConfig, DataPrepConfig
+import paths
+from config import TrainingConfig, DataPrepConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,8 +42,8 @@ def train(drums_df, model_key, dataset_folder, grid_search_key=None):
 
 
 if __name__ == "__main__":
-    parser = helper.create_global_parser()
-    args = helper.parse_global_arguments(parser)
+    parser = helper.global_parser()
+    args = helper.parse_args(parser)
     dataset_folder = args.old
-    drums_df = pd.read_pickle(PathConfig.DATA_PATH / dataset_folder / PathConfig.DATASET_WITH_FEATURES_FILENAME)
+    drums_df = pd.read_pickle(paths.DATA_PATH / dataset_folder / paths.DATASET_WITH_FEATURES_FILENAME)
     model, test_X, test_Y, labels = train(drums_df, "random_forest", dataset_folder)

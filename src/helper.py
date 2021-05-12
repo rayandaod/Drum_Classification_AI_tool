@@ -4,19 +4,19 @@ import pickle
 import logging
 import pandas as pd
 import torch
-
 from os import path
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 from argparse import ArgumentParser
 
-from config import TrainingConfig, PathConfig, GlobalConfig
+import paths
+from config import TrainingConfig, GlobalConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_global_parser():
+def global_parser():
     parser = ArgumentParser()
     parser.add_argument('--reload', action='store_true', dest='reload',
                         help='Reload the drum library and extract the features again.')
@@ -28,7 +28,7 @@ def create_global_parser():
     return parser
 
 
-def parse_global_arguments(parser):
+def parse_args(parser):
     args = parser.parse_args()
 
     GlobalConfig.RELOAD = args.reload
@@ -89,12 +89,12 @@ def drop_columns(df, columns):
 # Use imputation to fill in all missing values
 def imputer(train_np, test_np, dataset_folder):
     try:
-        imp = pickle.load(open(PathConfig.DATA_PATH / dataset_folder / PathConfig.IMPUTATER_FILENAME, 'rb'))
+        imp = pickle.load(open(paths.DATA_PATH / dataset_folder / paths.IMPUTATER_FILENAME, 'rb'))
     except FileNotFoundError:
         logger.info(f'No cached imputer found, training')
         imp = TrainingConfig.SimpleTrainingConfig.iterative_imputer
         imp.fit(train_np)
-        pickle.dump(imp, open(PathConfig.PICKLE_DATASETS_PATH/ dataset_folder / PathConfig.IMPUTATER_FILENAME, 'wb'))
+        pickle.dump(imp, open(paths.PICKLE_DATASETS_PATH/ dataset_folder / paths.IMPUTATER_FILENAME, 'wb'))
     train_np = imp.transform(train_np)
     test_np = imp.transform(test_np)
     return train_np, test_np
@@ -105,7 +105,7 @@ def scaler(train_np, test_np, dataset_folder):
     scaler = preprocessing.StandardScaler().fit(train_np)
     train_np = scaler.transform(train_np)
     test_np = scaler.transform(test_np)
-    pickle.dump(scaler, open(PathConfig.PICKLE_DATASETS_PATH / dataset_folder / PathConfig.SCALER_FILENAME, 'wb'))
+    pickle.dump(scaler, open(paths.PICKLE_DATASETS_PATH / dataset_folder / paths.SCALER_FILENAME, 'wb'))
     return train_np, test_np
 
 

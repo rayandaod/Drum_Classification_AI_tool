@@ -1,5 +1,4 @@
 import numpy as np
-from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
@@ -14,37 +13,6 @@ class GlobalConfig:
     RANDOM_STATE = None
     RELOAD = False
     VERBOSE = False
-
-
-class PathConfig:
-    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/"
-    here = Path(__file__).parent
-    DATA_PATH = here / '../data/'
-
-    DATASET_FILENAME = 'dataset.pkl'
-    PICKLE_DATASETS_PATH = DATA_PATH / 'datasets/'
-
-    # DATAFRAME_NOT_CAPED_FILENAME = 'dataset_not_caped.pkl'
-    # PICKLE_DATAFRAME_NOT_CAPED_PATH = DATA_PATH.joinpath(DATAFRAME_NOT_CAPED_FILENAME)
-
-    QUIET_OUTLIERS_FILENAME = "quiet_outliers.txt"
-    BLACKLISTED_FILES_FILENAME = "blacklisted_files.txt"
-    IGNORE_PATH = DATA_PATH / "to_ignore.txt"
-    BLACKLIST_PATH = DATA_PATH / "to_blacklist.txt"
-
-    METADATA_JSON_FILENAME = "metadata.json"
-
-    AUGMENTED_DATA_PATH = DATA_PATH / "augmented_data/"
-    TIME_STRETCHED_PATH = AUGMENTED_DATA_PATH / "time_stretched/"
-    PITCH_SHIFTED_PATH = AUGMENTED_DATA_PATH / "pitch_shifted/"
-
-    DATASET_WITH_FEATURES_FILENAME = 'dataset_features.pkl'
-
-    IMPUTATER_FILENAME = 'imputer.pkl'
-    SCALER_FILENAME = 'scaler.pkl'
-
-    MODELS_PATH = here / '../models/'
-    MODEL_FILENAME = 'model.pth'
 
 
 class PreprocessingConfig:
@@ -102,6 +70,7 @@ class TrainingConfig:
     # Implemented this way in order to easily serialize it to JSON
     class NNTrainingConfig:
         def __init__(self):
+            self.N_INPUT = None
             self.EPOCHS = 300  # Plot the learning curves
             self.BATCH_SIZE = 16
             self.LEARNING_RATE = 0.0007  # test factor 10 below and above, learning rate schedule?
