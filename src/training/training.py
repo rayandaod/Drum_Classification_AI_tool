@@ -2,9 +2,8 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 
-from src import *
-from training import helper
-from config import TrainingConfig, DataPrepConfig
+import training.helper as helper
+from config import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,7 +12,7 @@ here = Path(__file__).parent
 
 
 def fit_and_predict(model, train_X, train_y, test_X, test_y, drum_class_labels):
-    model.fit_and_predict(train_X, train_y)
+    model.fit(train_X, train_y)
     pred = model.predict(test_X)
     logger.info(classification_report(test_y, pred, target_names=drum_class_labels, zero_division=0))
     return model, test_X, test_y, drum_class_labels

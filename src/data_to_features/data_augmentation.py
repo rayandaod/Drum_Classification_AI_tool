@@ -2,9 +2,8 @@ import librosa
 import os
 import soundfile as sf
 
-from src import *
-from config import GlobalConfig
-from data_to_features import helper
+import data_to_features.helper as helper
+from config import *
 
 
 def time_stretch(raw_audio, stretch_factor, file_path, sr=GlobalConfig.DEFAULT_SR):
@@ -45,7 +44,7 @@ def pitch_shift(raw_audio, semitones, file_path, sr=GlobalConfig.DEFAULT_SR):
 # Retrieve a minimised version of a file path, with the slashes ("/") replaced with "__"
 def min_path_wo_slash(file_path):
     # Only retrieve the file_path after the sample library path
-    file_path_minimized = file_path.replace(SAMPLE_LIBRARY + "/", "")
+    file_path_minimized = file_path.replace(GlobalConfig.SAMPLE_LIBRARY + "/", "")
 
     # Replace the slashes with __, otherwise the path where to write is not recognised
     return file_path_minimized.replace("/", "__")

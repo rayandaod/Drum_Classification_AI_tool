@@ -1,13 +1,11 @@
 import librosa
 import pickle
-import numpy as np
 import pandas as pd
 from typing import Dict
 import json
 
-from src import *
-from config import GlobalConfig, FeatureConfig
-from data_to_features import helper
+import data_to_features.helper as helper
+from config import *
 
 
 def extract_single(raw_audio):
@@ -255,15 +253,15 @@ def extract_all(drums_df, dataset_folder):
         drums_df_with_features = pd.read_pickle(
             PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
 
-    features_list = []
+    columns = []
     for col_name in drums_df_with_features.columns:
-        features_list.append(col_name)
-    features_dict = {"features": features_list}
-    with open(PICKLE_DATASETS_PATH / dataset_folder / METADATA_JSON_FILENAME, "r+") as file:
-        data = json.load(file)
-        data.update(features_dict)
-        file.seek(0)
-        json.dump(data, file)
+        columns.append(col_name)
+    metadata_path = PICKLE_DATASETS_PATH / dataset_folder / METADATA_JSON_FILENAME
+    with open(metadata_path, "r+") as metadata_file:
+        data = json.load(metadata_file)
+    data["columns"] = columns
+    with open(metadata_path, "w") as metadata_file:
+        json.dump(data, metadata_file)
 
     return drums_df_with_features
 

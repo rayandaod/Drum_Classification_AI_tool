@@ -4,8 +4,7 @@ import torch
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 
-from src import *
-from config import TrainingConfig, GlobalConfig
+from config import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

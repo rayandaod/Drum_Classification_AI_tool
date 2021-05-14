@@ -2,14 +2,12 @@ import librosa
 import pickle
 import math
 import pandas as pd
-import numpy as np
 import time
 import os
 import json
 
-from src import *
-from data_to_features import helper
-from config import GlobalConfig, PreprocessingConfig
+import data_to_features.helper as helper
+from config import *
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +43,7 @@ def read_drum_library(input_dir_path):
             'end_time': np.NaN
         }
         # Tack on the original file duration (will have to load audio)
-        audio = read_audio.load_raw_audio(absolute_path_name, fast=True)
+        audio = helper.load_raw_audio(absolute_path_name, fast=True)
 
         # can_load_audio check above usually catches bad files, but sometimes not
         if audio is None:
@@ -182,7 +180,7 @@ def filter_quiet_outliers(drum_dataframe, dataset_folder, max_frames=Preprocessi
     # (RMS < 0.02 for all frames up to PreprocessingConfig.MAX_FRAMES (approximately 1 second))
 
     def loud_enough(clip):
-        raw_audio = read_audio.load_clip_audio(clip)
+        raw_audio = helper.load_clip_audio(clip)
         frame_length = min(2048, len(raw_audio))
         S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
         rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length // 4)[0]

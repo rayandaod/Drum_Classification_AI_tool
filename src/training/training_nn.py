@@ -3,16 +3,14 @@ import torch
 import time
 import os
 import json
-
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from torchsummary import summary
 
-from src import *
-from training import helper
-from config import TrainingConfig, GlobalConfig, DataPrepConfig
+import training.helper as helper
+from config import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

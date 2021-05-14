@@ -1,10 +1,6 @@
-from src import *
-from config import TrainingConfig, GlobalConfig
+from config import *
 from training import training
 from data_to_features import data_augmentation, preprocessing, feature_engineering
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def parse_arguments():
