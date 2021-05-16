@@ -6,7 +6,7 @@ import time
 import os
 import json
 
-import data_to_features.helper as helper
+import helper_data_to_features
 from config import *
 
 logger = logging.getLogger(__name__)
@@ -21,29 +21,38 @@ def read_drum_library(input_dir_path):
     folder_path = PICKLE_DATASETS_PATH / folder_name
     os.makedirs(folder_path)
 
+    blacklisted_files = []
+    ignored_files = []
+
     for input_file in Path(input_dir_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
         if GlobalConfig.VERBOSE:
             print(absolute_path_name[len(input_dir_path) + 1:])
-        if not helper.can_load_audio(absolute_path_name):
+        if not helper_data_to_features.can_load_audio(absolute_path_name):
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
-        drum_class = assign_class(absolute_path_name, file_stem, folder_name)
+        assignment = assign_class(absolute_path_name, file_stem)
+
+        if assignment["blacklisted"] is not None:
+            blacklisted_files.append(assignment["blacklisted"])
+
+        if assignment["ignored"] is not None:
+            ignored_files.append(assignment["ignored"])
 
         # Skip the recordings that do not belong to any of our classes
-        if drum_class is None:
+        if assignment["drum_type"] is None:
             continue
 
         properties = {
             'audio_path': absolute_path_name,
             'file_stem': file_stem,
-            'class': drum_class,
+            'class': assignment["drum_type"],
             'start_time': 0.0,
             'end_time': np.NaN
         }
         # Tack on the original file duration (will have to load audio)
-        audio = helper.load_raw_audio(absolute_path_name, fast=True)
+        audio = helper_data_to_features.load_raw_audio(absolute_path_name, fast=True)
 
         # can_load_audio check above usually catches bad files, but sometimes not
         if audio is None:
@@ -63,68 +72,73 @@ def read_drum_library(input_dir_path):
     if GlobalConfig.VERBOSE:
         print('     Loading files ok')
 
-    dataframe = pd.DataFrame(dataframe_rows)
+    drums_df = pd.DataFrame(dataframe_rows)
 
     # Add a column new_duration, by taking into account the new start and end time (after loop trimming)
     if GlobalConfig.VERBOSE:
         print('Computing new durations...')
-    dataframe["new_duration"] = dataframe.apply(lambda row: new_duration(row), axis=1)
+    drums_df["new_duration"] = drums_df.apply(lambda row: new_duration(row), axis=1)
 
     # Only keep the samples with new_duration < 5 seconds
     if GlobalConfig.VERBOSE:
         print('Checking new durations...')
-    len_dataframe_1 = len(dataframe)
-    dataframe = dataframe[dataframe["new_duration"] <= PreprocessingConfig.MAX_SAMPLE_DURATION]
+    len_dataframe_1 = len(drums_df)
+    drums_df = drums_df[drums_df["new_duration"] <= PreprocessingConfig.MAX_SAMPLE_DURATION]
     if GlobalConfig.VERBOSE:
-        print(" Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(dataframe),
+        print(" Removed {} samples with duration > {} seconds".format(len_dataframe_1 - len(drums_df),
                                                                       PreprocessingConfig.MAX_SAMPLE_DURATION))
 
     # Only keep the samples for which all the frames have an RMS above some threshold
     if GlobalConfig.VERBOSE:
         print('Filtering quiet outliers...')
-    len_dataframe_2 = len(dataframe)
-    dataframe = filter_quiet_outliers(dataframe, folder_name)
+    len_dataframe_2 = len(drums_df)
+    drums_df, quiet_outliers_list = filter_quiet_outliers(drums_df)
     if GlobalConfig.VERBOSE:
-        print(" Removed {} quiet samples".format(len_dataframe_2 - len(dataframe)))
+        print(" Removed {} quiet samples".format(len_dataframe_2 - len(drums_df)))
 
     # Save the pickle file in the right folder
-    pickle.dump(dataframe, open(folder_path / "dataset.pkl", 'wb'))
+    pickle.dump(drums_df, open(folder_path / "dataset.pkl", 'wb'))
 
     # Create the metadata.json
     metadata = {
-        "n_samples": str(dataframe.size),
-        "classes": {}
+        "library_path": GlobalConfig.SAMPLE_LIBRARY,
+        "n_samples": str(drums_df.size),
+        "classes": {},
+        "blacklisted_files": blacklisted_files,
+        "ignored_files": ignored_files,
+        "quiet_outliers": quiet_outliers_list
     }
     for drum_type in GlobalConfig.DRUM_TYPES:
-        metadata["classes"][drum_type] = str(dataframe[dataframe["class"] == drum_type].size)
+        metadata["classes"][drum_type] = str(drums_df[drums_df["class"] == drum_type].size)
     with open(folder_path / METADATA_JSON_FILENAME, 'w') as outfile:
         json.dump(metadata, outfile)
 
     return folder_name
 
 
-def assign_class(absolute_path, file_stem, dataset_folder):
+def assign_class(absolute_path, file_stem):
     """
     Assigns a class to the sample, excluding keywords in blacklist.
     :param absolute_path: The absolute path of the current sample
     :param file_stem: The name of the current sample
     :return: The assigned class, among those in DRUM_TYPES
     """
+    assignment = {"drum_type": None,
+                  "blacklisted": None,
+                  "ignored": None}
+
     for drum_type in GlobalConfig.DRUM_TYPES:
         # That way, we first check the file stem (in case the latter contains "hat" and the absolute path contains
         # "kick" for example)
         if drum_type in file_stem.lower() or drum_type in absolute_path.lower():
 
-            # TODO: not working
-            with open(PICKLE_DATASETS_PATH / dataset_folder / BLACKLISTED_FILES_FILENAME, "w") \
-                    as blacklisted_files:
-                blacklist_file = open(BLACKLIST_PATH)
-                for line in blacklist_file:
-                    blacklist = line.split(",")
-                    for b in blacklist:
-                        if b in absolute_path.lower():
-                            blacklisted_files.write("\n{}".format(absolute_path))
-                            return None
+            blacklist_file = open(BLACKLIST_PATH)
+            for line in blacklist_file:
+                blacklist = line.split(",")
+                for b in blacklist:
+                    if b in absolute_path.lower():
+                        assignment["blacklisted"] = absolute_path
+                        return assignment
 
             ignoring_file = open(IGNORE_PATH)
             for line in ignoring_file:
@@ -134,9 +148,16 @@ def assign_class(absolute_path, file_stem, dataset_folder):
                         absolute_path.replace(ig, "")
                         for dt in GlobalConfig.DRUM_TYPES:
                             if dt in file_stem.lower() or dt in absolute_path.lower():
-                                return dt
-            return drum_type
-    return None
+                                assignment["drum_type"] = dt
+                                return assignment
+                            else:
+                                assignment["ignored"] = absolute_path
+                                return assignment
+
+            assignment["drum_type"] = drum_type
+            return assignment
+
+    return assignment
 
 
 def detect_onsets(raw_audio, sr=GlobalConfig.DEFAULT_SR):
@@ -174,30 +195,29 @@ def new_duration(row):
         return row["orig_duration"] - row["start_time"]
 
 
-def filter_quiet_outliers(drum_dataframe, dataset_folder, max_frames=PreprocessingConfig.MAX_FRAMES,
+def filter_quiet_outliers(drums_df, max_frames=PreprocessingConfig.MAX_FRAMES,
                           max_rms_cutoff=PreprocessingConfig.MAX_RMS_CUTOFF, verbose=False):
     # Return a copy of the input dataframe without samples that are too quiet for a stable analysis
     # (RMS < 0.02 for all frames up to PreprocessingConfig.MAX_FRAMES (approximately 1 second))
 
     def loud_enough(clip):
-        raw_audio = helper.load_clip_audio(clip)
+        raw_audio = helper_data_to_features.load_clip_audio(clip)
         frame_length = min(2048, len(raw_audio))
         S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
         rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length // 4)[0]
         result = max(rms[:max_frames]) >= max_rms_cutoff
         if not result:
-            quiet_outliers_file.write("\n{}".format(clip.audio_path))
+            quiet_outliers_list.append(clip.audio_path)
             if verbose:
                 print(clip.audio_path)
         return result
 
-    with open(PICKLE_DATASETS_PATH / dataset_folder / QUIET_OUTLIERS_FILENAME, 'w') as \
-            quiet_outliers_file:
-        df = drum_dataframe[drum_dataframe.apply(loud_enough, axis=1)]
-    return df
+    quiet_outliers_list = []
+    df = drums_df[drums_df.apply(loud_enough, axis=1)]
+    return df, quiet_outliers_list
 
 
-def load_drums_df(dataset_folder):
+def run_or_load(dataset_folder):
     if GlobalConfig.RELOAD:
         dataset_folder = read_drum_library(GlobalConfig.SAMPLE_LIBRARY)
     if dataset_folder is not None:
@@ -210,4 +230,6 @@ def load_drums_df(dataset_folder):
 if __name__ == "__main__":
     parser = global_parser()
     args = parse_args(parser)
-    load_drums_df(args.old)
+    dataset_folder = args.folder
+
+    read_drum_library(GlobalConfig.SAMPLE_LIBRARY)

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class GlobalConfig:
-    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/Medasin Overdose 4"
+    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/KSHMR Vol. 2"
     DRUM_TYPES = ['kick', 'snare', 'hat', 'tom']
 
     DEFAULT_SR = 22050
@@ -120,7 +120,7 @@ def global_parser():
     parser = ArgumentParser()
     parser.add_argument('--reload', action='store_true', dest='reload',
                         help='Reload the drum library and extract the features again.')
-    parser.add_argument('--old', type=str, default=None, help='Select an already loaded dataset')
+    parser.add_argument('--folder', type=str, default=None, help='Select an already loaded dataset')
     parser.add_argument('--verbose', action='store_true', dest='verbose',
                         help='Print useful data for debugging')
     parser.set_defaults(reload=False)

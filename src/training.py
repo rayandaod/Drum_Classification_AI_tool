@@ -1,8 +1,7 @@
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 
-import training.helper as helper
+import helper_training as helper
 from config import *
 
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +40,7 @@ def train(drums_df, model_key, dataset_folder, grid_search_key=None):
 if __name__ == "__main__":
     parser = global_parser()
     args = parse_args(parser)
-    dataset_folder = args.old
+    dataset_folder = args.folder
 
     drums_df = pd.read_pickle(DATA_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
     model, test_X, test_Y, labels = train(drums_df, "random_forest", dataset_folder)

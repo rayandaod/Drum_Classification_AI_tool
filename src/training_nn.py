@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from torchsummary import summary
 
-import training.helper as helper
+import helper_training as helper
 from config import *
 
 logging.basicConfig(level=logging.INFO)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     # Load the parser
     parser = global_parser()
     args = parse_args(parser)
-    dataset_folder_name = args.old
+    dataset_folder_name = args.folder
 
     # Load the dataset
     drums_df = pd.read_pickle(

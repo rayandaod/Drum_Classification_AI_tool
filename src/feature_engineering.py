@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Dict
 import json
 
-import data_to_features.helper as helper
+import helper_data_to_features
 from config import *
 
 
@@ -210,6 +210,11 @@ def mfcc_features(S, valid_frames, is_long_enough_for_gradient, loudest_valid_fr
     return features
 
 
+def extract_melspectrogram(S):
+    mel_S = librosa.feature.melspectrogram(S=S)
+    return mel_S
+
+
 def trim_rms(rms, max_frames=FeatureConfig.MAX_FRAME, max_rms_cutoff=FeatureConfig.MAX_RMS_CUTOFF):
     rms = rms[:max_frames]
 
@@ -229,7 +234,7 @@ def extract_all_helper(clip, features_dict_list):
     # Load the raw audio of the current clip/row
     # Note that load_clip_audio is used rather than load_raw_audio, in order to take into account the changes in
     # start_time, end_time, ... (due to loop trimming)
-    raw_audio = helper.load_clip_audio(clip)
+    raw_audio = helper_data_to_features.load_clip_audio(clip)
 
     # Extract the features for a single row
     features_dict = extract_single(raw_audio)
@@ -242,23 +247,21 @@ def extract_all_helper(clip, features_dict_list):
 
 
 def extract_all(drums_df, dataset_folder):
-    if GlobalConfig.RELOAD:
-        features_dict_list = []
-        drums_df.apply(lambda row: extract_all_helper(row, features_dict_list), axis=1)
-        drums_df_with_features = pd.DataFrame(features_dict_list)
-        pickle.dump(drums_df_with_features,
-                    open(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME,
-                         'wb'))
-    else:
-        drums_df_with_features = pd.read_pickle(
-            PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
+    features_dict_list = []
+    drums_df.apply(lambda row: extract_all_helper(row, features_dict_list), axis=1)
+    drums_df_with_features = pd.DataFrame(features_dict_list)
+    pickle.dump(drums_df_with_features,
+                open(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME,
+                     'wb'))
 
+    # Retrieve the previous metadata.json file and complete it with the extracted features
     columns = []
     for col_name in drums_df_with_features.columns:
         columns.append(col_name)
     metadata_path = PICKLE_DATASETS_PATH / dataset_folder / METADATA_JSON_FILENAME
     with open(metadata_path, "r+") as metadata_file:
         data = json.load(metadata_file)
+    data['n_columns'] = len(columns)
     data["columns"] = columns
     with open(metadata_path, "w") as metadata_file:
         json.dump(data, metadata_file)
@@ -266,10 +269,17 @@ def extract_all(drums_df, dataset_folder):
     return drums_df_with_features
 
 
+def run_or_load(drums_df, dataset_folder):
+    if GlobalConfig.RELOAD:
+        return extract_all(drums_df, dataset_folder)
+    else:
+        return pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
+
+
 if __name__ == "__main__":
     parser = global_parser()
     args = parse_args(parser)
-    dataset_folder = args.old
+    dataset_folder = args.folder
 
     drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
     extract_all(drums_df, dataset_folder)

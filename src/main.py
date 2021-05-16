@@ -1,6 +1,8 @@
 from config import *
-from training import training
-from data_to_features import data_augmentation, preprocessing, feature_engineering
+import training
+import feature_engineering
+import preprocessing
+import data_augmentation
 
 
 def parse_arguments():
@@ -27,9 +29,8 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    drums_df, dataset_folder = preprocessing.load_drums_df(dataset_folder=args.old)
+    drums_df, dataset_folder = preprocessing.run_or_load(args.folder)
     # TODO: add an optional or automatic use of data augmentation here + append to previous dataframe
-    drums_df = data_augmentation.augment_data(drums_df, dataset_folder)  # useless for now
-    drums_df = feature_engineering.extract_all(drums_df, dataset_folder=dataset_folder)
-    training.train(drums_df, model_key=args.model, grid_search_key=args.sweep,
-                   dataset_folder=dataset_folder)
+    drums_df = data_augmentation.augment_data(drums_df, dataset_folder)
+    drums_df = feature_engineering.run_or_load(drums_df, dataset_folder)
+    training.train(drums_df, model_key=args.model, grid_search_key=args.sweep, dataset_folder=dataset_folder)

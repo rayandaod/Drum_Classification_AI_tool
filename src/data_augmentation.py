@@ -2,7 +2,7 @@ import librosa
 import os
 import soundfile as sf
 
-import data_to_features.helper as helper
+import helper_data_to_features as helper
 from config import *
 
 
