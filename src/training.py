@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.metrics import classification_report
 
-import helper_training as helper
+from models import helper_training as helper
 from config import *
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +20,8 @@ def fit_and_predict(model, train_X, train_y, test_X, test_y, drum_class_labels):
 def train(drums_df, model_key, dataset_folder, grid_search_key=None):
     data_prep_config = DataPrepConfig()
     train_X, train_y, test_X, test_y, drum_class_labels = helper.prep_data_b4_training(data_prep_config, drums_df,
-                                                                                       dataset_folder)
+                                                                                       dataset_folder,
+                                                                                       add_cols_to_drop=['melS'])
     logger.info(f"{model_key}:")
 
     # grid_search_key is already checked to be part of the grid_search_dict (in TrainingConfig) when launching main.py
@@ -42,5 +43,5 @@ if __name__ == "__main__":
     args = parse_args(parser)
     dataset_folder = args.folder
 
-    drums_df = pd.read_pickle(DATA_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
+    drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
     model, test_X, test_Y, labels = train(drums_df, "random_forest", dataset_folder)
