@@ -3,11 +3,11 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
-from helpers import global_helper
+from z_helpers import global_helper
 from config import *
-from features import feature_engineering
-from load import load_drums
-from train import training
+from b_features import feature_engineering
+from a_load import load_drums
+from c_train import training
 
 
 def parse_more_arguments(parser):

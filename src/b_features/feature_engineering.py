@@ -6,10 +6,10 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
-from helpers import audio_tools, global_helper
-from features.feature_extractors import extract_features_from_single
+from z_helpers import audio_tools, global_helper
+from b_features.feature_extractors import extract_features_from_single
 from config import *
-from helpers.paths import *
+from z_helpers.paths import *
 
 
 def extract_features_from_all(dataset_folder):

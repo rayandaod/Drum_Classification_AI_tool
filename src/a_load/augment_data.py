@@ -5,9 +5,9 @@ import soundfile as sf
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
-from helpers import audio_tools, global_helper
+from z_helpers import audio_tools, global_helper
 from config import *
-from helpers.paths import *
+from z_helpers.paths import *
 
 
 def time_stretch(raw_audio, stretch_factor, file_path, sr=GlobalConfig.DEFAULT_SR):

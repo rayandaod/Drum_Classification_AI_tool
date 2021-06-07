@@ -2,7 +2,7 @@ import librosa
 from typing import Dict
 
 from config import *
-import features.feature_helper as feature_helper
+import b_features.feature_helper as feature_helper
 
 
 def extract_features_from_single(raw_audio, audio_path):

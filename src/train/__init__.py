@@ -1,1 +1,0 @@
-CNN_INPUT_SIZE = (128, 256)
