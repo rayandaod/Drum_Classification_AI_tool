@@ -1,5 +1,3 @@
-import os
-
 from config import *
 
 
@@ -16,11 +14,3 @@ def trim_rms(rms, max_frames=FeatureConfig.MAX_FRAME, max_rms_cutoff=FeatureConf
     assert sum(valid_frames) > 0, 'sound too quiet for analysis, filter out using filter_quiet_outliers()'
 
     return rms, valid_frames
-
-
-def all_subdirs_of(b='.'):
-    result = []
-    for d in os.listdir(b):
-        bd = os.path.join(b, d)
-        if os.path.isdir(bd): result.append(bd)
-    return result

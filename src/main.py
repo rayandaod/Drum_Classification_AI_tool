@@ -1,15 +1,12 @@
+from train import training_nn
+
+import global_helper
 from config import *
-import training
-import training_nn
-import feature_engineering
-import load_drums
-import data_augmentation
+from features import feature_engineering
+from load import load_drums
 
 
-def parse_arguments():
-    # Load the global parser
-    parser = global_parser()
-
+def parse_more_arguments(parser):
     # Add more arguments to the loaded global parser
     parser.add_argument('--sweep', type=str, default=None, choices=TrainingConfig.SimpleTrainingConfig.grid_searches.keys(),
                         help='Run a gridSearch based on the hyper-parameters in config.py')
@@ -19,7 +16,7 @@ def parse_arguments():
                         help='Choose a model to train with')
 
     # Parse the global arguments and the new ones
-    args = parse_args(parser)
+    args = global_helper.parse_args(parser)
 
     # Set the new value for RANDOM_STATE
     GlobalConfig.RANDOM_STATE = args.seed
@@ -29,10 +26,8 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
-    drums_df, dataset_folder = load_drums.run_or_load(args.folder)
-    # TODO: add an optional or automatic use of data augmentation here + append to previous dataframe
-    drums_df = data_augmentation.augment_data(drums_df, dataset_folder)
+    args = parse_more_arguments(global_helper.global_parser())
+    _, dataset_folder = load_drums.run_or_load(args.folder)
     drums_df = feature_engineering.run_or_load(dataset_folder)
     # training.train(drums_df, model_key=args.model, grid_search_key=args.sweep, dataset_folder=dataset_folder)
     training_nn.run(drums_df, dataset_folder)

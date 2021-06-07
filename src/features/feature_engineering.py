@@ -7,18 +7,19 @@ import sys
 sys.path.append(os.path.abspath(os.path.join('..')))
 
 import audio_tools
-import features.feature_helper as feature_helper
+import global_helper
 from features.feature_extractors import extract_features_from_single
 from config import *
+from paths import *
 
 
 def extract_features_from_all(dataset_folder):
     # If dataset_folder is not given, take the last created dataset folder, otherwise load_drums it from the
     # provided folder
-    drums_df = load_dataset(dataset_folder)
+    drums_df = global_helper.load_dataset(dataset_folder, dataset_filename=DATASET_FILENAME)
 
     # Extract the features from the entire dataset of the provided folder, and store them in the same folder
-    drums_df_with_features = extract_and_store(drums_df, dataset_folder)
+    drums_df_with_features = load_extract_store(drums_df, dataset_folder)
 
     # Update the previously created metadata file into a more detailed one
     create_metadata(drums_df_with_features, dataset_folder)
@@ -26,19 +27,7 @@ def extract_features_from_all(dataset_folder):
     return drums_df_with_features
 
 
-def load_dataset(dataset_folder):
-    """
-
-    @param dataset_folder:
-    @return:
-    """
-    if dataset_folder is None:
-        all_subdirs = feature_helper.all_subdirs_of(PICKLE_DATASETS_PATH)
-        dataset_folder = max(all_subdirs, key=os.path.getmtime)
-    return pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
-
-
-def extract_and_store(drums_df, dataset_folder):
+def load_extract_store(drums_df, dataset_folder):
     """
 
     @param drums_df:
@@ -46,7 +35,7 @@ def extract_and_store(drums_df, dataset_folder):
     @return:
     """
 
-    def extract_lamdba(clip):
+    def load_extract(clip):
         # Load the raw audio of the current clip/row
         # Note that load_clip_audio is used rather than load_raw_audio, in order to take into account the changes in
         # start_time, end_time, ... (due to loop trimming)
@@ -62,7 +51,7 @@ def extract_and_store(drums_df, dataset_folder):
         features_dict_list.append(features_dict)
 
     features_dict_list = []
-    drums_df.apply(lambda row: extract_lamdba(row), axis=1)
+    drums_df.apply(lambda row: load_extract(row), axis=1)
     drums_df_with_features = pd.DataFrame(features_dict_list)
     pickle.dump(drums_df_with_features,
                 open(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME, 'wb'))
@@ -105,4 +94,4 @@ def run_or_load(dataset_folder):
 
 
 if __name__ == "__main__":
-    extract_features_from_all(parse_args(global_parser()).folder)
+    extract_features_from_all(global_helper.parse_args(global_helper.global_parser()).folder)
