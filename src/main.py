@@ -1,9 +1,13 @@
-from train import training_nn
+import sys
+import os
 
-import global_helper
+sys.path.append(os.path.abspath(os.path.join('')))
+
+from helpers import global_helper
 from config import *
 from features import feature_engineering
 from load import load_drums
+from train import training
 
 
 def parse_more_arguments(parser):
@@ -29,5 +33,5 @@ if __name__ == "__main__":
     args = parse_more_arguments(global_helper.global_parser())
     _, dataset_folder = load_drums.run_or_load(args.folder)
     drums_df = feature_engineering.run_or_load(dataset_folder)
-    # training.train(drums_df, model_key=args.model, grid_search_key=args.sweep, dataset_folder=dataset_folder)
-    training_nn.run(drums_df, dataset_folder)
+    training.train(drums_df, model_key=args.model, grid_search_key=args.sweep, dataset_folder=dataset_folder)
+    # training_nn.run(drums_df, dataset_folder)

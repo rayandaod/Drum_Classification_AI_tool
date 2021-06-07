@@ -5,10 +5,9 @@ import soundfile as sf
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
-import audio_tools
-import global_helper
+from helpers import audio_tools, global_helper
 from config import *
-from paths import *
+from helpers.paths import *
 
 
 def time_stretch(raw_audio, stretch_factor, file_path, sr=GlobalConfig.DEFAULT_SR):
@@ -24,7 +23,7 @@ def time_stretch(raw_audio, stretch_factor, file_path, sr=GlobalConfig.DEFAULT_S
     time_stretched_wav = librosa.effects.time_stretch(raw_audio, stretch_factor)
 
     # Retrieve a minimised version of a file path, with the slashes ("/") replaced with "__"
-    file_path_wo_slash = min_path_wo_slash(file_path)
+    file_path_wo_slash = global_helper.min_path_wo_slash(file_path)
 
     # Create the new file path (to point to the data/time_stretched/ folder)
     new_file_path = os.path.join(TIME_STRETCHED_PATH, "{}_{}".format(stretch_factor, file_path_wo_slash))
@@ -49,7 +48,7 @@ def pitch_shift(raw_audio, semitones, file_path, sr=GlobalConfig.DEFAULT_SR):
     pitch_shifted_wav = librosa.effects.pitch_shift(raw_audio, sr, semitones)
 
     # Retrieve a minimised version of a file path, with the slashes ("/") replaced with "__"
-    file_path_wo_slash = min_path_wo_slash(file_path)
+    file_path_wo_slash = global_helper.min_path_wo_slash(file_path)
 
     # Create the new file path (to point to the data/time_stretched/ folder)
     new_file_path = os.path.join(PITCH_SHIFTED_PATH, "{}_{}".format(semitones, file_path_wo_slash))
@@ -59,20 +58,6 @@ def pitch_shift(raw_audio, semitones, file_path, sr=GlobalConfig.DEFAULT_SR):
     sf.write(new_file_path, pitch_shifted_wav, samplerate=sr)
 
     return new_file_path
-
-
-# Retrieve a minimised version of a file path, with the slashes ("/") replaced with "__"
-def min_path_wo_slash(file_path):
-    """
-
-    @param file_path:
-    @return:
-    """
-    # Only retrieve the file_path after the sample library path
-    file_path_minimized = file_path.replace(GlobalConfig.SAMPLE_LIBRARY + "/", "")
-
-    # Replace the slashes with __, otherwise the path where to write is not recognised
-    return file_path_minimized.replace("/", "__")
 
 
 def augment_data(dataset_folder, min_per_class=DataAugmentConfig.MIN_PER_CLASS,
@@ -90,10 +75,9 @@ def augment_data(dataset_folder, min_per_class=DataAugmentConfig.MIN_PER_CLASS,
     """
 
     # Load the drum dataframe
-    drums_df = global_helper.load_dataset(dataset_folder, DATASET_FILENAME)
+    drums_df = global_helper.load_dataset(dataset_folder)
 
     # Check class imbalance
-
 
 
 if __name__ == "__main__":

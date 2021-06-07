@@ -5,7 +5,6 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
-from pathlib import Path
 
 import logging
 
@@ -23,9 +22,9 @@ class GlobalConfig:
     DEFAULT_SR = 22050
 
     DEFAULT_FRAME_LENGTH = 2048
-    DEFAULT_HOP_LENGTH_DIV_FACTOR = 4
-    MAX_FRAMES = 44
-    MAX_RMS_CUTOFF = 0.02
+    DEFAULT_HOP_LENGTH_DIV_FACTOR = 4  # So that hop_length = 2048 // 4 = 512
+    MAX_FRAMES = 44  # 44 * 512 = 22528 samples ~= 1 second
+    MIN_REQ_RMS = 0.02  # minimum required RMS for each of the first MAX_FRAMES frames
 
     RANDOM_STATE = None
     RELOAD = False
@@ -34,10 +33,14 @@ class GlobalConfig:
 
 class PreprocessingConfig:
     SR_FRACTION_FOR_TRIM = 1 / 200.0
-    MAX_SAMPLE_DURATION = 5  # seconds
+    MAX_SAMPLE_DURATION = 5  # Number of seconds above which the sample is discarded because too long
 
 
-# class DataAugmentationConfig:
+class DataAugmentConfig:
+    MIN_PER_CLASS = 800  # Minimum number of samples per drum class for the training phase
+    AUGMENTATION_REPARTITION = 0.5  #
+    PITCH_SHIFTING_RANGE = np.arange(-5, 5)
+    TIME_STRETCHING_RANGE = np.arange(0.4, 1.5, 0.1)
 
 
 class FeatureConfig:
@@ -49,13 +52,6 @@ class FeatureConfig:
         'std': np.std,
         'zcr': (lambda arr: len(np.where(np.diff(np.sign(arr)))[0]) / float(len(arr)))
     }
-
-
-class DataAugmentConfig:
-    MIN_PER_CLASS = 800
-    AUGMENTATION_REPARTITION = 0.5
-    PITCH_SHIFTING_RANGE = np.arange(-5, 5)
-    TIME_STRETCHING_RANGE = np.arange(0.4, 1.5, 0.1)
 
 
 class DataPrepConfig:

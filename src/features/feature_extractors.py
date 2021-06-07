@@ -16,7 +16,7 @@ def extract_features_from_single(raw_audio, audio_path):
     S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
 
     # Compute root-mean-square (RMS) value for each frame, taking the frame_length computed before
-    # (2048 samples or less), and the hop_length being frame_length//4
+    # (2048 samples or less), and the hop_length being frame_length//DEFAULT_HOP_LENGTH_DIV_FACTOR
     rms = librosa.feature.rms(S=S, frame_length=frame_length,
                               hop_length=frame_length//GlobalConfig.DEFAULT_HOP_LENGTH_DIV_FACTOR)[0]
 
@@ -24,7 +24,7 @@ def extract_features_from_single(raw_audio, audio_path):
     features = {**features, **mpeg7_features(rms, frame_length)}
 
     # For the remainder of features, only focus on frames within 1 second
-    rms, valid_frames = feature_helper.trim_rms(rms, audio_path)
+    rms, valid_frames = feature_helper.only_req_rms_frames(rms, audio_path)
     is_long_enough_for_gradient = len(rms) > 1
     loudest_valid_frame_index = np.argmax(rms)
 

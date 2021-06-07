@@ -7,9 +7,9 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
-import audio_tools
+from helpers import audio_tools
 from load.load_drums_helper import *
-from paths import *
+from helpers.paths import *
 
 logger = logging.getLogger(__name__)
 
@@ -110,17 +110,25 @@ def load(drum_lib_path):
         properties['start_time'] = start_time
         properties['end_time'] = end_time
         if end_time is not None and not math.isnan(end_time):
-            properties["new_duration"] = float(end_time) - float(start_time)
+            new_duration = float(end_time) - float(start_time)
         else:
-            properties["new_duration"] = properties["orig_duration"] - start_time
+            new_duration = properties["orig_duration"] - start_time
+        properties["new_duration"] = new_duration
 
         # If the new_duration attribute is bigger than MAX_SAMPLE_DURATION seconds, the audio is too long, discard it
-        if properties["new_duration"] >= PreprocessingConfig.MAX_SAMPLE_DURATION:
+        if new_duration >= PreprocessingConfig.MAX_SAMPLE_DURATION:
             too_long_files.append(absolute_path_name)
             continue
 
+        # Load the raw audio again but this time by taking into accounts the new start and end time (thanks to onset
+        # detection)
+        new_raw_audio = audio_tools.load_raw_audio(absolute_path_name,
+                                                   offset=start_time,
+                                                   duration=new_duration,
+                                                   fast=True)
+
         # If the audio file is too quiet, discard it
-        if is_too_quiet(raw_audio):
+        if is_too_quiet(new_raw_audio):
             quiet_outliers.append(absolute_path_name)
             continue
 

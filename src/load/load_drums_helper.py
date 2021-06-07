@@ -81,19 +81,28 @@ def detect_onsets(raw_audio, sr=GlobalConfig.DEFAULT_SR):
     return start, end
 
 
-def is_too_quiet(raw_audio, max_frames=GlobalConfig.MAX_FRAMES,
-                 max_rms_cutoff=GlobalConfig.MAX_RMS_CUTOFF):
+def is_too_quiet(raw_audio, max_frames=GlobalConfig.MAX_FRAMES, min_required_rms=GlobalConfig.MIN_REQ_RMS):
+    """
+
+
+    @param raw_audio:
+    @param max_frames:
+    @param min_required_rms:
+    @return: True (too quiet) if the first max_frames frames have an RMS value below the min_required_rms threshold,
+    False (not too quiet) otherwise
+    """
     frame_length = min(GlobalConfig.DEFAULT_FRAME_LENGTH, len(raw_audio))
     S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
     rms = librosa.feature.rms(S=S, frame_length=frame_length,
-                              hop_length=frame_length // GlobalConfig.DEFAULT_HOP_LENGTH_DIV_FACTOR)[0]
-    return max(rms[:max_frames]) < max_rms_cutoff
+                              hop_length=frame_length//GlobalConfig.DEFAULT_HOP_LENGTH_DIV_FACTOR)[0]
+    return max(rms[:max_frames]) < min_required_rms
 
 
 def create_metadata(drums_df, input_dir_path, blacklisted_files, ignored_files, too_long_files, quiet_outliers_list,
                     folder_path, metadata_filename):
     """
-    TODO
+
+
     @param drums_df:
     @param input_dir_path:
     @param blacklisted_files:

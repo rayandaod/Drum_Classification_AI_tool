@@ -52,11 +52,3 @@ def load_raw_audio(path_string, sr=GlobalConfig.DEFAULT_SR, offset=0, duration=N
         logger.warning(f'Can\'t load {path_string} due to length, {audio_data.shape[0]} {int(sr * duration)} '
                        f'{duration} {sr}')
         return None
-
-
-def load_clip_audio(clip, sr=GlobalConfig.DEFAULT_SR):
-    """
-    Clip is a row of a dataframe with a start_time, end_time, audio_path, and new_duration
-    """
-    duration = None if clip.end_time is None or np.isnan(clip.end_time) else (clip.end_time - clip.start_time)
-    return load_raw_audio(clip.audio_path, sr=sr, offset=clip.start_time, duration=duration)
