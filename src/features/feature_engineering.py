@@ -42,7 +42,7 @@ def load_extract_store(drums_df, dataset_folder):
         raw_audio = audio_tools.load_clip_audio(clip)
 
         # Extract the features for a single row
-        features_dict = extract_features_from_single(raw_audio)
+        features_dict = extract_features_from_single(raw_audio, clip.audio_path)
 
         # Include the row class to the features dictionary
         features_dict["drum_type"] = clip["drum_type"]
@@ -90,7 +90,7 @@ def run_or_load(dataset_folder):
     if GlobalConfig.RELOAD:
         return extract_features_from_all(dataset_folder)
     else:
-        return pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
+        return pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
 
 
 if __name__ == "__main__":

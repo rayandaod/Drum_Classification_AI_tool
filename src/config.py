@@ -22,6 +22,11 @@ class GlobalConfig:
 
     DEFAULT_SR = 22050
 
+    DEFAULT_FRAME_LENGTH = 2048
+    DEFAULT_HOP_LENGTH_DIV_FACTOR = 4
+    MAX_FRAMES = 44
+    MAX_RMS_CUTOFF = 0.02
+
     RANDOM_STATE = None
     RELOAD = False
     VERBOSE = False
@@ -30,8 +35,6 @@ class GlobalConfig:
 class PreprocessingConfig:
     SR_FRACTION_FOR_TRIM = 1 / 200.0
     MAX_SAMPLE_DURATION = 5  # seconds
-    MAX_FRAMES = 44  # About 1s of audio max, given librosa's default hop_length (= 512 samples): 44*512=22'528 samples
-    MAX_RMS_CUTOFF = 0.02  # If there is no frame with RMS >= MAX_RMS_CUTOFF within MAX_FRAMES, we'll filter it out
 
 
 # class DataAugmentationConfig:
@@ -39,10 +42,6 @@ class PreprocessingConfig:
 
 class FeatureConfig:
     DEFAULT_START_ATTACK_THRESHOLD = 0.02
-    DEFAULT_FRAME_LENGTH = 2048
-    DEFAULT_HOP_LENGTH_DIV_FACTOR = 4
-    MAX_FRAME = PreprocessingConfig.MAX_FRAMES
-    MAX_RMS_CUTOFF = PreprocessingConfig.MAX_RMS_CUTOFF
     SUMMARY_OPS = {
         'avg': np.mean,
         'max': np.max,

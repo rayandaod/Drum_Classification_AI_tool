@@ -81,11 +81,12 @@ def detect_onsets(raw_audio, sr=GlobalConfig.DEFAULT_SR):
     return start, end
 
 
-def is_too_quiet(raw_audio, max_frames=PreprocessingConfig.MAX_FRAMES,
-                 max_rms_cutoff=PreprocessingConfig.MAX_RMS_CUTOFF):
-    frame_length = min(FeatureConfig.DEFAULT_FRAME_LENGTH, len(raw_audio))
+def is_too_quiet(raw_audio, max_frames=GlobalConfig.MAX_FRAMES,
+                 max_rms_cutoff=GlobalConfig.MAX_RMS_CUTOFF):
+    frame_length = min(GlobalConfig.DEFAULT_FRAME_LENGTH, len(raw_audio))
     S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
-    rms = librosa.feature.rms(S=S, frame_length=frame_length, hop_length=frame_length // 4)[0]
+    rms = librosa.feature.rms(S=S, frame_length=frame_length,
+                              hop_length=frame_length // GlobalConfig.DEFAULT_HOP_LENGTH_DIV_FACTOR)[0]
     return max(rms[:max_frames]) < max_rms_cutoff
 
 
@@ -100,6 +101,7 @@ def create_metadata(drums_df, input_dir_path, blacklisted_files, ignored_files, 
     @param too_long_files:
     @param quiet_outliers_list:
     @param folder_path:
+    @param metadata_filename:
     @return:
     """
     # Retrieve the current columns of the dataframe

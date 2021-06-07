@@ -5,12 +5,12 @@ from config import *
 import features.feature_helper as feature_helper
 
 
-def extract_features_from_single(raw_audio):
+def extract_features_from_single(raw_audio, audio_path):
     assert raw_audio.size != 0
     features: Dict[str, float] = dict()
 
     # Handle audio samples shorter than one frame
-    frame_length = min(FeatureConfig.DEFAULT_FRAME_LENGTH, len(raw_audio))
+    frame_length = min(GlobalConfig.DEFAULT_FRAME_LENGTH, len(raw_audio))
 
     # Retrieve the magnitude of the sample's STFT
     S, _ = librosa.magphase(librosa.stft(y=raw_audio, n_fft=frame_length))
@@ -18,13 +18,13 @@ def extract_features_from_single(raw_audio):
     # Compute root-mean-square (RMS) value for each frame, taking the frame_length computed before
     # (2048 samples or less), and the hop_length being frame_length//4
     rms = librosa.feature.rms(S=S, frame_length=frame_length,
-                              hop_length=frame_length//FeatureConfig.DEFAULT_HOP_LENGTH_DIV_FACTOR)[0]
+                              hop_length=frame_length//GlobalConfig.DEFAULT_HOP_LENGTH_DIV_FACTOR)[0]
 
     # MPEG-7 standard features
     features = {**features, **mpeg7_features(rms, frame_length)}
 
     # For the remainder of features, only focus on frames within 1 second
-    rms, valid_frames = feature_helper.trim_rms(rms)
+    rms, valid_frames = feature_helper.trim_rms(rms, audio_path)
     is_long_enough_for_gradient = len(rms) > 1
     loudest_valid_frame_index = np.argmax(rms)
 
@@ -129,7 +129,7 @@ def rms_features(rms, is_long_enough_for_gradient):
 def zero_crossing_rate_features(raw_audio, frame_length, valid_frames, loudest_valid_frame_index):
     features: Dict[str, float] = dict()
     zcr = librosa.feature.zero_crossing_rate(raw_audio, frame_length=frame_length, hop_length=frame_length // 4)
-    zcr = zcr[0][:FeatureConfig.MAX_FRAME][valid_frames]
+    zcr = zcr[0][:GlobalConfig.MAX_FRAMES][valid_frames]
     for op in ['avg', 'min', 'max', 'std']:
         features[f'zcr_{op}'] = FeatureConfig.SUMMARY_OPS[op](zcr)
     features['zcr_loudest'] = zcr[loudest_valid_frame_index]
@@ -141,7 +141,7 @@ def spectral_features(S, frame_length, valid_frames, is_long_enough_for_gradient
     features: Dict[str, float] = dict()
 
     log_spec_cent = np.log10(librosa.feature.spectral_centroid(
-        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:FeatureConfig.MAX_FRAME][valid_frames])
+        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:GlobalConfig.MAX_FRAMES][valid_frames])
     for op in ['avg', 'min', 'max', 'std']:
         features[f'log_spec_cent_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_spec_cent)
     features['log_spec_cent_loudest'] = log_spec_cent[loudest_valid_frame_index]
@@ -154,13 +154,13 @@ def spectral_features(S, frame_length, valid_frames, is_long_enough_for_gradient
             else np.NaN
 
     log_spec_band = np.log10(librosa.feature.spectral_bandwidth(S=S, n_fft=frame_length, hop_length=frame_length // 4)
-                             [0][:FeatureConfig.MAX_FRAME][valid_frames])
+                             [0][:GlobalConfig.MAX_FRAMES][valid_frames])
     for op in ['avg', 'min', 'max', 'std']:
         features[f'log_spec_band_{op}'] = FeatureConfig.SUMMARY_OPS[op](log_spec_band)
     features['log_spec_band_d_avg'] = np.mean(np.gradient(log_spec_band)) if is_long_enough_for_gradient else np.NaN
 
     spec_flat = librosa.feature.spectral_flatness(
-        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:FeatureConfig.MAX_FRAME][valid_frames]
+        S=S, n_fft=frame_length, hop_length=frame_length // 4)[0][:GlobalConfig.MAX_FRAMES][valid_frames]
     for op in ['avg', 'min', 'max', 'std']:
         features[f'spec_flat_{op}'] = FeatureConfig.SUMMARY_OPS[op](spec_flat)
     features['spec_flat_loudest'] = spec_flat[loudest_valid_frame_index]
@@ -169,7 +169,7 @@ def spectral_features(S, frame_length, valid_frames, is_long_enough_for_gradient
     for roll_percent in [.15, .85]:
         spec_rolloff = librosa.feature.spectral_rolloff(
             S=S, roll_percent=roll_percent, n_fft=frame_length, hop_length=frame_length // 4
-        )[0][:FeatureConfig.MAX_FRAME][valid_frames]
+        )[0][:GlobalConfig.MAX_FRAMES][valid_frames]
         roll_percent_int = int(100 * roll_percent)
         features[f'log_spec_rolloff_{roll_percent_int}_loudest'] = np.log10(spec_rolloff[loudest_valid_frame_index]) \
             if spec_rolloff[loudest_valid_frame_index] > 0.0 else np.NaN
@@ -189,7 +189,7 @@ def mfcc_features(S, valid_frames, is_long_enough_for_gradient, loudest_valid_fr
     features: Dict[str, float] = dict()
 
     # Trim the first mfcc because it's basically volume
-    mfccs = librosa.feature.mfcc(S=S, n_mfcc=n_mfcc)[1:, :FeatureConfig.MAX_FRAME][:, valid_frames]
+    mfccs = librosa.feature.mfcc(S=S, n_mfcc=n_mfcc)[1:, :GlobalConfig.MAX_FRAMES][:, valid_frames]
     n_mfcc -= 1
 
     # Compute once because it's faster
