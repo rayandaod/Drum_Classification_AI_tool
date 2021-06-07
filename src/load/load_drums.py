@@ -5,7 +5,7 @@ import pickle
 import time
 import pandas as pd
 
-sys.path.append(os.path.abspath(os.path.join('..')))
+sys.path.append(os.path.abspath(os.path.join('')))
 
 import audio_tools
 from load.load_drums_helper import *

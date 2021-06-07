@@ -3,7 +3,7 @@ import os
 import sys
 import soundfile as sf
 
-sys.path.append(os.path.abspath(os.path.join('..')))
+sys.path.append(os.path.abspath(os.path.join('')))
 
 import audio_tools
 import global_helper
