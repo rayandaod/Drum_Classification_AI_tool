@@ -4,6 +4,9 @@ venv/
 models/*
 !models/.gitkeep
 
+tests/*
+!tests/.gitkeep
+
 data/*
 !data/.gitkeep
 !data/augmented_data/

@@ -1,19 +1,15 @@
 import os
 import sys
-import pandas as pd
 from sklearn.metrics import classification_report
 
-sys.path.append(os.path.abspath(os.path.join('../..')))
+sys.path.append(os.path.abspath(os.path.join('')))
 
 from z_helpers import global_helper
-from c_train import training_helper as helper
+from c_train import training_helper
 from config import *
-from z_helpers.paths import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-here = Path(__file__).parent
 
 
 def fit_and_predict(model, train_X, train_y, test_X, test_y, drum_class_labels):
@@ -25,8 +21,9 @@ def fit_and_predict(model, train_X, train_y, test_X, test_y, drum_class_labels):
 
 def train(drums_df, model_key, dataset_folder, grid_search_key=None):
     data_prep_config = DataPrepConfig()
-    train_X, train_y, test_X, test_y, drum_class_labels = helper.prep_data_b4_training(data_prep_config, drums_df,
-                                                                                       dataset_folder)
+    train_X, train_y, test_X, test_y, drum_class_labels = training_helper.prep_data_b4_training(data_prep_config,
+                                                                                                drums_df,
+                                                                                                dataset_folder)
     logger.info(f"{model_key}:")
 
     # grid_search_key is already checked to be part of the grid_search_dict (in TrainingConfig) when launching main.py
@@ -44,6 +41,6 @@ def train(drums_df, model_key, dataset_folder, grid_search_key=None):
 
 
 if __name__ == "__main__":
-    dataset_folder = global_helper.parse_args(global_helper.global_parser()).folder
-    drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
+    drums_df, dataset_folder = global_helper.load_dataset(
+        global_helper.parse_args(global_helper.global_parser()).folder)
     model, test_X, test_Y, labels = train(drums_df, "random_forest", dataset_folder)
