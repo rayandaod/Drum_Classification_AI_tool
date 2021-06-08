@@ -4,7 +4,6 @@ import audioread
 import audioop
 import librosa
 import logging
-import numpy as np
 
 from config import GlobalConfig
 

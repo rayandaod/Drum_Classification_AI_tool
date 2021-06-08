@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 from sklearn.metrics import classification_report
 
-sys.path.append(os.path.abspath(os.path.join('..')))
+sys.path.append(os.path.abspath(os.path.join('../..')))
 
 from z_helpers import global_helper
 from c_train import training_helper as helper
