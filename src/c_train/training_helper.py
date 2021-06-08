@@ -1,13 +1,14 @@
 import pickle
 import pandas as pd
 import torch
-import numpy as np
+import operator
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
+from torch.utils.data import Dataset
+from functools import partial
+from torch.utils.data import DataLoader
 
-import models.data_loader as data_loader
 from config import *
-from models.clips_dataset import ClipsDataset
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,19 +57,22 @@ def prep_data_b4_training_CNN(data_prep_config, drums_df):
 
     # Only keep the melS column and the labels
     train_clips_df = train_clips_df[['melS', 'drum_type_labels']]
+    train_clips_flat = np.hstack(train_clips_df['melS'].to_numpy())
+
     test_clips_df = test_clips_df[['melS', 'drum_type_labels']]
+    test_clips_flat = np.hstack(test_clips_df['melS'].to_numpy())
 
     # Create instances of ClipsDataset
     train_dataset = ClipsDataset(train_clips_df, 'mel_spec_model_input', target_feature,
-                                 np.mean(train_clips_df['melS']), np.std(train_clips_df['melS']))
-    test_dataset = ClipsDataset(test_clips_df, 'mel_spec_model_input', target_feature, np.mean(test_clips_df['melS']),
-                                np.std(test_clips_df['melS']))
+                                 train_clips_flat.mean(), train_clips_flat.std())
+    test_dataset = ClipsDataset(test_clips_df, 'mel_spec_model_input', target_feature, test_clips_flat.mean(),
+                                test_clips_flat.std())
 
     # Create instances of Dataloader
-    train_loader = data_loader.load(train_dataset, batch_size=data_prep_config.CNN_BATCH_SIZE, is_train=True,
-                                    desired_len=CNN_INPUT_SIZE[1])
-    test_loader = data_loader.load(test_dataset, batch_size=data_prep_config.CNN_VAL_BATCH_SIZE, is_train=False,
-                                   desired_len=CNN_INPUT_SIZE[1])
+    train_loader = load(train_dataset, batch_size=data_prep_config.CNN_BATCH_SIZE, is_train=True,
+                        desired_len=CNN_INPUT_SIZE[1])
+    test_loader = load(test_dataset, batch_size=data_prep_config.CNN_VAL_BATCH_SIZE, is_train=False,
+                       desired_len=CNN_INPUT_SIZE[1])
 
     return train_loader, test_loader, list(unique_labels.values)
 
@@ -145,3 +149,52 @@ def multi_acc(y_pred, y_test):
     acc = torch.round(acc * 100)
 
     return acc
+
+
+class ClipsDataset(Dataset):
+    def __init__(self, clips_df, training_data_key, target_feature, mean, std):
+        # Ensure the df has an index from 0 to len-1
+        self.clips_df = clips_df.reset_index(drop=True)
+        self.training_data_key = training_data_key
+        self.target_feature = target_feature
+        self.mean = mean
+        self.std = std
+
+    def __len__(self):
+        return len(self.clips_df)
+
+    def __getitem__(self, index):
+        clip = self.clips_df.loc[index]
+
+        # Load from disk, normalize
+        clip_feature = clip["melS"]
+        clip_feature = np.divide(np.subtract(clip_feature, self.mean), self.std)
+
+        # pytorch expects 3 dimensions (an extra one for channel) so wrap it
+        if len(clip_feature.shape) == 2:
+            clip_feature = np.expand_dims(clip_feature, 0)
+
+        return clip_feature.astype(np.float32), clip[self.target_feature]
+
+
+def collate(batch, desired_len):
+    '''
+    Pads the shorter inputs of a batch so they all have the same shape.
+    :param max_length: Don't let inputs go beyond this size.
+    :return: Batched inputs, a tensor of floats of shape [batch_size, 1, n_mels, length]
+    '''
+    # Inputs are [1 x n_mels x n_frames]
+    n_mels = batch[0][0].shape[1]
+    tensor = torch.zeros((len(batch), 1, n_mels, desired_len), dtype=torch.float, requires_grad=False)
+
+    for batch_i, (instance, target) in enumerate(batch):
+        replace_len = min(instance.shape[2], desired_len)
+        trimmed_instance = instance[:, :, :replace_len]
+        tensor.data[batch_i, :, :, :replace_len] = torch.FloatTensor(trimmed_instance)
+
+    return tensor, torch.LongTensor(list(map(operator.itemgetter(1), batch)))
+
+
+def load(seq_dataset, batch_size, is_train, desired_len, num_workers=8):
+    return DataLoader(seq_dataset, batch_size=batch_size, shuffle=is_train,
+                      collate_fn=partial(collate, desired_len=desired_len), num_workers=num_workers, pin_memory=True)

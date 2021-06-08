@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from torchsummary import summary
 
-from models import helper_training as helper
+from c_train import training_helper as helper
 from config import *
 
 logging.basicConfig(level=logging.INFO)
@@ -178,8 +178,7 @@ def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, t
 
 def prepare_data(data_prep_config, drums_df, dataset_folder):
     logger.info("Preparing data...")
-    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df, dataset_folder,
-                                                                             add_cols_to_drop=['melS'])
+    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df, dataset_folder)
     X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval,
                                                       test_size=data_prep_config.VALIDATION_SET_RATIO,
                                                       stratify=y_trainval,
