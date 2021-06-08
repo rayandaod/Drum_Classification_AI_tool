@@ -1,2 +1,0 @@
-https://github.com/radkoff/drum_sound_classifier\
-https://github.com/prandoni/COM303
