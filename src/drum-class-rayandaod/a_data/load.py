@@ -8,7 +8,7 @@ import pandas as pd
 sys.path.append(os.path.abspath(os.path.join('')))
 
 from z_helpers import audio_tools
-from a_load.load_drums_helper import *
+from a_data.data_helper import *
 from z_helpers.paths import *
 
 logger = logging.getLogger(__name__)

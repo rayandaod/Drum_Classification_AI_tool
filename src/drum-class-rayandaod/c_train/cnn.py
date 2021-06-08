@@ -12,7 +12,7 @@ from ignite.engine import Events, create_supervised_evaluator, create_supervised
 from ignite.metrics import Accuracy, Loss
 from ignite.handlers import EarlyStopping
 
-from c_train import training_helper as helper
+from c_train import train_helper as helper
 from config import *
 
 

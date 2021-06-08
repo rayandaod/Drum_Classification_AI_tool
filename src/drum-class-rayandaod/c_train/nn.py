@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from torchsummary import summary
 
-from c_train import training_helper as helper
+from c_train import train_helper as helper
 from config import *
 
 logging.basicConfig(level=logging.INFO)

@@ -9,6 +9,7 @@ from functools import partial
 from torch.utils.data import DataLoader
 
 from config import *
+from z_helpers.paths import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def drop_columns(df, columns):
 # Use imputation to fill in all missing values
 def imputer(train_np, test_np, dataset_folder):
     try:
-        imp = pickle.load(open(DATA_PATH / dataset_folder / IMPUTATER_FILENAME, 'rb'))
+        imp = pickle.load(open(DATA / dataset_folder / IMPUTATER_FILENAME, 'rb'))
     except FileNotFoundError:
         logger.info(f'No cached imputer found, training')
         imp = TrainingConfig.SimpleTrainingConfig.iterative_imputer
