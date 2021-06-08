@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join('')))
 
 from z_helpers import global_helper
 from config import *
-from b_features import feature_engineering
+from b_features import extract
 from a_data import load
 from c_train import basic
 
@@ -34,6 +34,6 @@ def parse_more_arguments(parser):
 if __name__ == "__main__":
     args = parse_more_arguments(global_helper.global_parser())
     _, dataset_folder = load.run_or_load(args.folder)
-    drums_df = feature_engineering.run_or_load(dataset_folder)
+    drums_df = extract.run_or_load(dataset_folder)
     basic.train(drums_df, model_key=args.model, grid_search_key=args.sweep, dataset_folder=dataset_folder)
     # training_nn.run(drums_df, dataset_folder)
