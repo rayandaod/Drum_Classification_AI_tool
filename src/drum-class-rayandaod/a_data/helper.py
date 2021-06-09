@@ -72,7 +72,7 @@ def detect_onsets(raw_audio, sr=GlobalConfig.DEFAULT_SR):
     onsets = librosa.onset.onset_detect(y=raw_audio, sr=sr, hop_length=hop_length, units='time')
 
     if len(onsets) == 0:
-        return {'start': start, 'end': end}
+        return start, end
     elif len(onsets) > 1:
         # If there are multiple onsets, cut it off just before the second one
         end = onsets[1] - (silence_to_add + 0.01)

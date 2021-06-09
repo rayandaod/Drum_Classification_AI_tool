@@ -7,6 +7,7 @@ from sklearn import preprocessing
 from torch.utils.data import Dataset
 from functools import partial
 from torch.utils.data import DataLoader
+from torch import nn
 
 from config import *
 from z_helpers.paths import *
@@ -97,7 +98,7 @@ def imputer(train_np, test_np, dataset_folder):
         imp = pickle.load(open(DATA / dataset_folder / IMPUTATER_FILENAME, 'rb'))
     except FileNotFoundError:
         logger.info(f'No cached imputer found, training')
-        imp = TrainingConfig.SimpleTrainingConfig.iterative_imputer
+        imp = TrainingConfig.Basic.iterative_imputer
         imp.fit(train_np)
         pickle.dump(imp, open(PICKLE_DATASETS_PATH / dataset_folder / IMPUTATER_FILENAME, 'wb'))
     train_np = imp.transform(train_np)
@@ -199,3 +200,52 @@ def collate(batch, desired_len):
 def load(seq_dataset, batch_size, is_train, desired_len, num_workers=8):
     return DataLoader(seq_dataset, batch_size=batch_size, shuffle=is_train,
                       collate_fn=partial(collate, desired_len=desired_len), num_workers=num_workers, pin_memory=True)
+
+
+class ClassifierDataset(Dataset):
+
+    def __init__(self, X_data, y_data):
+        self.X_data = X_data
+        self.y_data = y_data
+
+    def __getitem__(self, index):
+        return self.X_data[index], self.y_data[index]
+
+    def __len__(self):
+        return len(self.X_data)
+
+
+class MulticlassClassification(nn.Module):
+    def __init__(self, num_feature, num_class, nn_config):
+        super(MulticlassClassification, self).__init__()
+        self.name = "Fully Connected Neural Network"
+
+        self.layer_1 = nn.Linear(num_feature, 64)
+        self.layer_2 = nn.Linear(64, 32)
+        self.layer_3 = nn.Linear(32, 16)
+        self.layer_out = nn.Linear(16, num_class)
+
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=nn_config.DROPOUT_P)
+        self.batchnorm1 = nn.BatchNorm1d(64)
+        self.batchnorm2 = nn.BatchNorm1d(32)
+        self.batchnorm3 = nn.BatchNorm1d(16)
+
+    def forward(self, x):
+        x = self.layer_1(x)
+        x = self.batchnorm1(x)
+        x = self.relu(x)
+
+        x = self.layer_2(x)
+        x = self.batchnorm2(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer_3(x)
+        x = self.batchnorm3(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer_out(x)
+
+        return x

@@ -191,11 +191,11 @@ def train(model, train_loader, val_loader, epochs, early_stopping, lr, momentum,
 
 def run(drums_df, exp_name, is_continue):
     # PREPARE DATA
-    data_prep_config = DataPrepConfig()
+    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)), isCNN=True)
     train_loader, test_loader, _ = helper.prep_data_b4_training_CNN(data_prep_config, drums_df)
 
     # CREATE THE MODEL
-    cnn_training_config = TrainingConfig.CNNTrainingConfig()
+    cnn_training_config = TrainingConfig.CNN()
     model = ConvNet(cnn_training_config, n_classes=len(GlobalConfig.DRUM_TYPES))
 
     # TRAIN

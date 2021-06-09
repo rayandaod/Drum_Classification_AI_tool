@@ -1,76 +1,61 @@
-import pandas as pd
 import torch
 import time
 import os
+import sys
 import json
 from torch import nn, optim
-from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from torchsummary import summary
 
-from c_train import helper as helper
+sys.path.append(os.path.abspath(os.path.join('')))
+
+from c_train import helper
 from config import *
+from z_helpers import global_helper
+from z_helpers.paths import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class ClassifierDataset(Dataset):
+def run(drums_df, dataset_folder):
+    # PREPARE DATA
+    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)))
+    X_train, X_val, y_train, y_val, X_test, y_test = prepare_data(data_prep_config, drums_df, dataset_folder)
 
-    def __init__(self, X_data, y_data):
-        self.X_data = X_data
-        self.y_data = y_data
+    # TRAIN
+    nn_config = TrainingConfig.NN()
+    nn_config.N_INPUT = X_train.shape[1]
+    model = helper.MulticlassClassification(num_feature=nn_config.N_INPUT,
+                                            num_class=len(GlobalConfig.DRUM_TYPES),
+                                            nn_config=nn_config)
+    model, logs_string = fit_and_predict(model, nn_config, X_train, y_train.to_numpy(), X_val, y_val.to_numpy(),
+                                          X_test,
+                                          y_test.to_numpy())
 
-    def __getitem__(self, index):
-        return self.X_data[index], self.y_data[index]
-
-    def __len__(self):
-        return len(self.X_data)
-
-
-class MulticlassClassification(nn.Module):
-    def __init__(self, num_feature, num_class, nn_training_config):
-        super(MulticlassClassification, self).__init__()
-        self.name = "Fully Connected Neural Network"
-
-        self.layer_1 = nn.Linear(num_feature, 64)
-        self.layer_2 = nn.Linear(64, 32)
-        self.layer_3 = nn.Linear(32, 16)
-        self.layer_out = nn.Linear(16, num_class)
-
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=nn_training_config.DROPOUT_P)
-        self.batchnorm1 = nn.BatchNorm1d(64)
-        self.batchnorm2 = nn.BatchNorm1d(32)
-        self.batchnorm3 = nn.BatchNorm1d(16)
-
-    def forward(self, x):
-        x = self.layer_1(x)
-        x = self.batchnorm1(x)
-        x = self.relu(x)
-
-        x = self.layer_2(x)
-        x = self.batchnorm2(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-
-        x = self.layer_3(x)
-        x = self.batchnorm3(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-
-        x = self.layer_out(x)
-
-        return x
+    # SAVE MODEL & METADATA
+    save_model(model, data_prep_config, nn_config, logs_string)
 
 
-def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, test_X, test_y):
+def prepare_data(data_prep_config, drums_df, dataset_folder):
+    logger.info("Preparing data...")
+    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df, dataset_folder)
+    X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval,
+                                                      test_size=data_prep_config.VALIDATION_SET_RATIO,
+                                                      stratify=y_trainval,
+                                                      random_state=GlobalConfig.RANDOM_STATE)
+
+    return X_train, X_val, y_train, y_val, X_test, y_test
+
+
+def fit_and_predict(model, nn_config, train_X, train_y, val_X, val_y, test_X, test_y):
     logger.info(f"Training with {model.name}...")
 
-    train_dataset = ClassifierDataset(torch.from_numpy(train_X).float(), torch.from_numpy(train_y).long())
-    val_dataset = ClassifierDataset(torch.from_numpy(val_X).float(), torch.from_numpy(val_y).long())
-    test_dataset = ClassifierDataset(torch.from_numpy(test_X).float(), torch.from_numpy(test_y).long())
+    train_dataset = helper.ClassifierDataset(torch.from_numpy(train_X).float(), torch.from_numpy(train_y).long())
+    val_dataset = helper.ClassifierDataset(torch.from_numpy(val_X).float(), torch.from_numpy(val_y).long())
+    test_dataset = helper.ClassifierDataset(torch.from_numpy(test_X).float(), torch.from_numpy(test_y).long())
 
     target_list = []
     for _, t in train_dataset:
@@ -90,7 +75,7 @@ def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, t
     )
 
     train_loader = DataLoader(dataset=train_dataset,
-                              batch_size=nn_training_config.BATCH_SIZE,
+                              batch_size=nn_config.BATCH_SIZE,
                               sampler=weighted_sampler
                               )
     val_loader = DataLoader(dataset=val_dataset, batch_size=1)
@@ -100,7 +85,7 @@ def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, t
     model.to(device)
 
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-    optimizer = optim.Adam(model.parameters(), lr=nn_training_config.LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=nn_config.LEARNING_RATE)
 
     print(model)
 
@@ -114,7 +99,8 @@ def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, t
     }
 
     logger.info("Begin training...")
-    for e in range(1, nn_training_config.EPOCHS + 1):
+    logs_string = ''
+    for e in range(1, nn_config.EPOCHS + 1):
         # TRAINING
         train_epoch_loss = 0
         train_epoch_acc = 0
@@ -157,7 +143,7 @@ def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, t
         accuracy_stats['train'].append(train_epoch_acc / len(train_loader))
         accuracy_stats['val'].append(val_epoch_acc / len(val_loader))
 
-        print(
+        logs_string = global_helper.print_and_append(logs_string,
             f'Epoch {e + 0:03}: | Train Loss: {train_epoch_loss / len(train_loader):.5f} | Val Loss: {val_epoch_loss / len(val_loader):.5f} | Train Acc: {train_epoch_acc / len(train_loader):.3f}| Val Acc: {val_epoch_acc / len(val_loader):.3f}')
 
     # TEST
@@ -171,65 +157,42 @@ def fit_and_predict(model, nn_training_config, train_X, train_y, val_X, val_y, t
             y_pred_list.append(y_pred_tags.cpu().numpy())
     y_pred_list = [a.squeeze().tolist() for a in y_pred_list]
 
-    print(classification_report(test_y, y_pred_list))
+    classification_report_string = 'Classification Report:\n' + classification_report(test_y, y_pred_list)
+    print(classification_report_string)
 
-    return model
-
-
-def prepare_data(data_prep_config, drums_df, dataset_folder):
-    logger.info("Preparing data...")
-    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df, dataset_folder)
-    X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval,
-                                                      test_size=data_prep_config.VALIDATION_SET_RATIO,
-                                                      stratify=y_trainval,
-                                                      random_state=GlobalConfig.RANDOM_STATE)
-
-    return X_train, X_val, y_train, y_val, X_test, y_test
+    return model, classification_report_string + logs_string
 
 
-def save_model(model, data_prep_config, nn_training_config):
-    logger.info("Saving model...")
+def save_model(model, data_prep_config, nn_config, logs_string):
+    logger.info("Saving model and metadata...")
+
+    # Create the model folder
     model_folder = time.strftime("%Y%m%d-%H%M%S")
-    folder_path = MODELS_PATH / model_folder
-    os.makedirs(folder_path)
-    torch.save(model, folder_path / MODEL_FILENAME)
+    model_folder_path = MODELS / model_folder
+    os.makedirs(model_folder_path)
+
+    # Save the model
+    torch.save(model, model_folder_path / MODEL_FILENAME)
+
+    # Save the metadata
     metadata = {
-        "training_params": json.dumps(data_prep_config.__dict__),
-        "NN_training params": json.dumps(nn_training_config.__dict__),
         "model_name": model.name,
-        "model_summary": summary(model, (1, nn_training_config.N_INPUT))
+        "training_params": json.dumps(data_prep_config.__dict__),
+        "NN_training params": json.dumps(nn_config.__dict__),
     }
-    with open(folder_path / METADATA_JSON_FILENAME, 'w') as outfile:
+    with open(model_folder_path / METADATA_JSON_FILENAME, 'w') as outfile:
         json.dump(metadata, outfile)
 
-
-def run(drums_df, dataset_folder):
-    # PREPARE DATA
-    data_prep_config = DataPrepConfig()
-    X_train, X_val, y_train, y_val, X_test, y_test = prepare_data(data_prep_config, drums_df, dataset_folder)
-
-    # TRAIN
-    nn_training_config = TrainingConfig.NNTrainingConfig()
-    nn_training_config.N_INPUT = X_train.shape[1]
-    model = MulticlassClassification(num_feature=nn_training_config.N_INPUT,
-                                     num_class=len(GlobalConfig.DRUM_TYPES),
-                                     nn_training_config=nn_training_config)
-    model = fit_and_predict(model, nn_training_config, X_train, y_train.to_numpy(), X_val, y_val.to_numpy(), X_test,
-                            y_test.to_numpy())
-
-    # SAVE MODEL & METADATA
-    save_model(model, data_prep_config, nn_training_config)
+    # Save the logs
+    log_file = open(model_folder_path / LOGS_FILENAME, "a+")
+    log_file.write(logs_string)
+    log_file.close()
 
 
 if __name__ == "__main__":
-    # Load the parser
-    parser = global_parser()
-    args = parse_args(parser)
-    dataset_folder = args.folder
-
-    # Load the dataset
-    drums_df = pd.read_pickle(
-        PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
+    dataset_folder = global_helper.parse_args(global_helper.global_parser()).folder
+    drums_df, dataset_folder = global_helper.load_dataset(dataset_folder,
+                                                          dataset_filename=DATASET_WITH_FEATURES_FILENAME)
 
     # Start the training
     run(drums_df, dataset_folder)

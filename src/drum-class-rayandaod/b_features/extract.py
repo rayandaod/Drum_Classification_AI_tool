@@ -98,4 +98,5 @@ def run_or_load(dataset_folder):
 
 
 if __name__ == "__main__":
-    extract_features_from_all(global_helper.parse_args(global_helper.global_parser()).folder)
+    dataset_folder = global_helper.parse_args(global_helper.global_parser()).folder
+    extract_features_from_all(dataset_folder)

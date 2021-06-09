@@ -16,7 +16,7 @@ CNN_INPUT_SIZE = (128, 256)
 
 
 class GlobalConfig:
-    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/KSHMR Vol. 3"
+    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples"
     DRUM_TYPES = ['kick', 'snare', 'hat', 'tom']
 
     DEFAULT_SR = 22050
@@ -55,16 +55,18 @@ class FeatureConfig:
 
 
 class DataPrepConfig:
-    def __init__(self):
+    def __init__(self, dataset_folder, isCNN=False):
         # Data preparation variables
-        self.N_SAMPLES_PER_CLASS = None
+        self.DATASET_FOLDER = dataset_folder
+        self.N_SAMPLES_PER_CLASS = 750
         self.VALIDATION_SET_RATIO = 0.1
-        self.CNN_BATCH_SIZE = 64
-        self.CNN_VAL_BATCH_SIZE = 64
+        if isCNN:
+            self.CNN_BATCH_SIZE = 64
+            self.CNN_VAL_BATCH_SIZE = 64
 
 
 class TrainingConfig:
-    class SimpleTrainingConfig:
+    class Basic:
         MODELS = {
             'lr': LinearRegression(),
             'svc': SVC(),
@@ -85,16 +87,16 @@ class TrainingConfig:
         }
 
     # Implemented this way in order to easily serialize it to JSON
-    class NNTrainingConfig:
+    class NN:
         def __init__(self):
             self.N_INPUT = None
-            self.EPOCHS = 300  # Plot the learning curves
+            self.EPOCHS = 3  # Plot the learning curves
             self.BATCH_SIZE = 16
             self.LEARNING_RATE = 0.0007  # test factor 10 below and above, learning rate schedule?
             self.DROPOUT_P = 0.2
 
     # Implemented this way in order to easily serialize it to JSON
-    class CNNTrainingConfig:
+    class CNN:
         def __init__(self):
             self.MAX_EPOCHS = 300
             self.EARLY_STOPPING = 10

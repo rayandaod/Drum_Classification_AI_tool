@@ -13,12 +13,12 @@ from c_train import basic
 def parse_more_arguments(parser):
     # Add more arguments to the loaded global parser
     parser.add_argument('--sweep', type=str, default=None,
-                        choices=TrainingConfig.SimpleTrainingConfig.grid_searches.keys(),
+                        choices=TrainingConfig.Basic.grid_searches.keys(),
                         help='Run a gridSearch based on the hyper-parameters in config.py')
     parser.add_argument('--seed', type=int, default=None,
                         help='Set up a random state to have the same train-test-datasets across different runs')
     parser.add_argument('--model', type=str, default="random_forest",
-                        choices=TrainingConfig.SimpleTrainingConfig.MODELS,
+                        choices=TrainingConfig.Basic.MODELS,
                         help='Choose a model to train with')
 
     # Parse the global arguments and the new ones

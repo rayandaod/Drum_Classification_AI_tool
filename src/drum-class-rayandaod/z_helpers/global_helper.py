@@ -71,3 +71,9 @@ def min_path_wo_slash(file_path):
 
     # Replace the slashes with __, otherwise the path where to write is not recognised
     return file_path_minimized.replace("/", "__")
+
+
+def print_and_append(init_string, print_append):
+    print(print_append)
+    new_string = init_string + '\n' + print_append
+    return new_string

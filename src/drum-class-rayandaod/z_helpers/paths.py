@@ -28,3 +28,4 @@ IMPUTATER_FILENAME = 'imputer.pkl'
 SCALER_FILENAME = 'scaler.pkl'
 
 MODEL_FILENAME = 'model.pth'
+LOGS_FILENAME = 'logs.txt'
