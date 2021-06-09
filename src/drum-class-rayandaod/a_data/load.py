@@ -52,10 +52,11 @@ def create_dataset_folder(drum_lib_path):
     return folder_name, folder_path
 
 
-def load(drum_lib_path):
+def load(drum_lib_path, eval=False):
     """
     TODO
     @param drum_lib_path:
+    @param eval:
     @return:
     """
     # Create empty arrays to be filled
@@ -75,23 +76,26 @@ def load(drum_lib_path):
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
-        assignment = assign_class(absolute_path_name, file_stem, blacklist_path=BLACKLIST_PATH, ignore_path=IGNORE_PATH)
-        if assignment["blacklisted"] is not None:
-            blacklisted_files.append(assignment["blacklisted"])
-        if assignment["ignored"] is not None:
-            ignored_files.append(assignment["ignored"])
-        # Skip the recordings that do not belong to any of our classes
-        if assignment["drum_type"] is None:
-            continue
 
         # Initialize the properties of the current audio file
         properties = {
             'audio_path': absolute_path_name,
             'file_stem': file_stem,
-            'drum_type': assignment["drum_type"],
             'start_time': 0.0,
             'end_time': np.NaN
         }
+
+        if not eval:
+            assignment = assign_class(absolute_path_name, file_stem, blacklist_path=BLACKLIST_PATH,
+                                      ignore_path=IGNORE_PATH)
+            if assignment["blacklisted"] is not None:
+                blacklisted_files.append(assignment["blacklisted"])
+            if assignment["ignored"] is not None:
+                ignored_files.append(assignment["ignored"])
+            # Skip the recordings that do not belong to any of our classes
+            if assignment["drum_type"] is None:
+                continue
+            properties['drum_type'] = assignment['drum_type']
 
         # Load the raw audio
         raw_audio = audio_tools.load_raw_audio(absolute_path_name, fast=True)

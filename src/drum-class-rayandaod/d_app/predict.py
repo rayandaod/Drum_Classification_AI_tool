@@ -12,17 +12,11 @@ from config import *
 
 
 def predict(folder_path, dataset_folder_name, model_folder_name):
-    drums_df, blacklisted_files, ignored_files, too_long_files, quiet_outliers = load.load(folder_path)
-
-    if len(blacklisted_files) > 0 or len(ignored_files) > 0 or len(too_long_files) > 0 or len(quiet_outliers) > 0:
-        print('File was discarded:')
-        print(f'Blacklisted files: {blacklisted_files}')
-        print(f'Ignored files: {ignored_files}')
-        print(f'Too long files: {too_long_files}')
-        print(f'Quiet files: {quiet_outliers}')
+    drums_df, _, _, too_long_files, quiet_outliers = load.load(folder_path, eval=True)
+    print(f'Too long: {too_long_files}')
+    print(f'Too quiet: {quiet_outliers}')
 
     drums_df_with_features, _ = extract.load_extract_from(None, drums_df)
-    drums_df_with_features = drums_df_with_features.drop(columns=['drum_type'])
     drums_df_with_features = drums_df_with_features.drop(columns=['melS'])
 
     nn = torch.load(MODELS / dataset_folder_name / model_folder_name / MODEL_FILENAME)
