@@ -29,11 +29,10 @@ def run(drums_df, dataset_folder):
     nn_config = TrainingConfig.NN()
     nn_config.N_INPUT = X_train.shape[1]
     model = helper.MulticlassClassification(num_feature=nn_config.N_INPUT,
-                                            num_class=len(GlobalConfig.DRUM_TYPES),
-                                            nn_config=nn_config)
+                                            num_class=len(GlobalConfig.DRUM_TYPES))
     model, logs_string = fit_and_predict(model, nn_config, X_train, y_train.to_numpy(), X_val, y_val.to_numpy(),
-                                          X_test,
-                                          y_test.to_numpy())
+                                         X_test,
+                                         y_test.to_numpy())
 
     # SAVE MODEL & METADATA
     save_model(model, data_prep_config, nn_config, logs_string)
@@ -144,7 +143,7 @@ def fit_and_predict(model, nn_config, train_X, train_y, val_X, val_y, test_X, te
         accuracy_stats['val'].append(val_epoch_acc / len(val_loader))
 
         logs_string = global_helper.print_and_append(logs_string,
-            f'Epoch {e + 0:03}: | Train Loss: {train_epoch_loss / len(train_loader):.5f} | Val Loss: {val_epoch_loss / len(val_loader):.5f} | Train Acc: {train_epoch_acc / len(train_loader):.3f}| Val Acc: {val_epoch_acc / len(val_loader):.3f}')
+                                                     f'Epoch {e + 0:03}: | Train Loss: {train_epoch_loss / len(train_loader):.5f} | Val Loss: {val_epoch_loss / len(val_loader):.5f} | Train Acc: {train_epoch_acc / len(train_loader):.3f}| Val Acc: {val_epoch_acc / len(val_loader):.3f}')
 
     # TEST
     y_pred_list = []
@@ -166,10 +165,12 @@ def fit_and_predict(model, nn_config, train_X, train_y, val_X, val_y, test_X, te
 def save_model(model, data_prep_config, nn_config, logs_string):
     logger.info("Saving model and metadata...")
 
-    # Create the model folder
-    model_folder = time.strftime("%Y%m%d-%H%M%S")
-    model_folder_path = MODELS / model_folder
-    os.makedirs(model_folder_path)
+    # Define the model folder
+    model_folder = 'NN_' + time.strftime("%Y%m%d-%H%M%S")
+    dataset_in_models = MODELS / data_prep_config.DATASET_FOLDER
+    model_folder_path = dataset_in_models / model_folder
+    Path(dataset_in_models).mkdir(parents=True, exist_ok=True)
+    Path(model_folder_path).mkdir()
 
     # Save the model
     torch.save(model, model_folder_path / MODEL_FILENAME)

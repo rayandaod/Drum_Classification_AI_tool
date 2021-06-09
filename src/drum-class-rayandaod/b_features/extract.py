@@ -6,8 +6,8 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
-from z_helpers import audio_tools, global_helper
-from b_features.extractors import extract_features_from_single
+from z_helpers import global_helper, audio_tools
+from b_features import extractors
 from config import *
 from z_helpers.paths import *
 
@@ -22,7 +22,7 @@ def extract_features_from_all(dataset_folder):
     return drums_df_with_features
 
 
-def load_extract_from(dataset_folder):
+def load_extract_from(dataset_folder, drums_df=None):
     """
 
     @param dataset_folder:
@@ -36,7 +36,7 @@ def load_extract_from(dataset_folder):
         raw_audio = audio_tools.load_raw_audio(audio_path, offset=start_time, duration=new_duration, fast=True)
 
         # Extract the features for a single row
-        features_dict = extract_features_from_single(raw_audio, audio_path)
+        features_dict = extractors.extract_features_from_single(raw_audio, audio_path)
 
         # Include the row class to the features dictionary
         features_dict["drum_type"] = drum_type
@@ -45,9 +45,12 @@ def load_extract_from(dataset_folder):
         features_dict_list.append(features_dict)
 
     features_dict_list = []
-    drums_df, dataset_folder = global_helper.load_dataset(dataset_folder)
-    drums_df.apply(lambda row: load_extract(row.audio_path, row.start_time, row.new_duration, row.drum_type), axis=1)
-    return pd.DataFrame(features_dict_list), dataset_folder
+    if drums_df is None:
+        drums_df, dataset_folder = global_helper.load_dataset(dataset_folder)
+    drums_df.apply(
+        lambda row: load_extract(row.audio_path, row.start_time, row.new_duration, row.drum_type), axis=1)
+    drums_df_with_features = pd.DataFrame(features_dict_list)
+    return drums_df_with_features, dataset_folder
 
 
 def save_all(drums_df_with_features, dataset_folder):

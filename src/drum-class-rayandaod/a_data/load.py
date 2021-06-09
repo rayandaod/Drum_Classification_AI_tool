@@ -28,10 +28,10 @@ def load_drum_library(drum_lib_path):
     folder_name, folder_path = create_dataset_folder(drum_lib_path)
 
     # Gather the audio files in drum_lib_path that satisfy the required constraints
-    dataframe_rows, blacklisted_files, ignored_files, too_long_files, quiet_outliers = load(drum_lib_path)
+    drums_df, blacklisted_files, ignored_files, too_long_files, quiet_outliers = load(drum_lib_path)
 
     # Create the full dataframe out of the list of dictionaries, save it in the right folder, and add a metadata file
-    save_all(dataframe_rows, folder_path, drum_lib_path, blacklisted_files, ignored_files, too_long_files,
+    save_all(drums_df, folder_path, drum_lib_path, blacklisted_files, ignored_files, too_long_files,
              quiet_outliers)
 
     return folder_name
@@ -68,7 +68,6 @@ def load(drum_lib_path):
     # .wav file research loop
     logger.info(f'Searching for .wav files in {drum_lib_path}...')
     for input_file in Path(drum_lib_path).glob('**/*.wav'):
-
         absolute_path_name = input_file.resolve().as_posix()
         if GlobalConfig.VERBOSE:
             logger.info(absolute_path_name[len(drum_lib_path) + 1:])
@@ -134,14 +133,15 @@ def load(drum_lib_path):
 
         # Append the properties dict to the list of dictionaries, which will become a dataframe later :)
         dataframe_rows.append(properties)
-    return dataframe_rows, blacklisted_files, ignored_files, too_long_files, quiet_outliers
+    drums_df = pd.DataFrame(dataframe_rows)
+    return drums_df, blacklisted_files, ignored_files, too_long_files, quiet_outliers
 
 
-def save_all(dataframe_rows, folder_path, input_dir_path, blacklisted_files, ignored_files, too_long_files,
+def save_all(drums_df, folder_path, input_dir_path, blacklisted_files, ignored_files, too_long_files,
              quiet_outliers):
     """
 
-    @param dataframe_rows:
+    @param drums_df:
     @param folder_path:
     @param input_dir_path:
     @param blacklisted_files:
@@ -151,7 +151,6 @@ def save_all(dataframe_rows, folder_path, input_dir_path, blacklisted_files, ign
     @return:
     """
     logger.info('Saving the dataset and metadata file...')
-    drums_df = pd.DataFrame(dataframe_rows)
     pickle.dump(drums_df, open(folder_path / DATASET_FILENAME, 'wb'))
     create_metadata(drums_df, input_dir_path, blacklisted_files, ignored_files, too_long_files, quiet_outliers,
                     folder_path, metadata_filename=METADATA_JSON_FILENAME)

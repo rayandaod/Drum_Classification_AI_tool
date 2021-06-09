@@ -216,7 +216,7 @@ class ClassifierDataset(Dataset):
 
 
 class MulticlassClassification(nn.Module):
-    def __init__(self, num_feature, num_class, nn_config):
+    def __init__(self, num_feature, num_class):
         super(MulticlassClassification, self).__init__()
         self.name = "Fully Connected Neural Network"
 
@@ -226,7 +226,7 @@ class MulticlassClassification(nn.Module):
         self.layer_out = nn.Linear(16, num_class)
 
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=nn_config.DROPOUT_P)
+        self.dropout = nn.Dropout(p=0.2)
         self.batchnorm1 = nn.BatchNorm1d(64)
         self.batchnorm2 = nn.BatchNorm1d(32)
         self.batchnorm3 = nn.BatchNorm1d(16)

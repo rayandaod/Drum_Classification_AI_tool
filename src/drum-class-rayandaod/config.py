@@ -90,7 +90,7 @@ class TrainingConfig:
     class NN:
         def __init__(self):
             self.N_INPUT = None
-            self.EPOCHS = 3  # Plot the learning curves
+            self.EPOCHS = 300  # Plot the learning curves
             self.BATCH_SIZE = 16
             self.LEARNING_RATE = 0.0007  # test factor 10 below and above, learning rate schedule?
             self.DROPOUT_P = 0.2

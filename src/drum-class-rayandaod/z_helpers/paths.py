@@ -13,8 +13,8 @@ PICKLE_DATASETS_PATH = DATA / 'datasets/'
 
 QUIET_OUTLIERS_FILENAME = "quiet_outliers.txt"
 BLACKLISTED_FILES_FILENAME = "blacklisted_files.txt"
-IGNORE_PATH = DATA / "to_ignore.txt"
-BLACKLIST_PATH = DATA / "to_blacklist.txt"
+IGNORE_PATH = DATA / "words_to_ignore.txt"
+BLACKLIST_PATH = DATA / "words_to_blacklist.txt"
 
 METADATA_JSON_FILENAME = "metadata.json"
 
