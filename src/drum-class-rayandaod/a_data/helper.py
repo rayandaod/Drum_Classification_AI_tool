@@ -98,13 +98,14 @@ def is_too_quiet(raw_audio, max_frames=GlobalConfig.MAX_FRAMES, min_required_rms
     return max(rms[:max_frames]) < min_required_rms
 
 
-def create_metadata(drums_df, input_dir_path, blacklisted_files, ignored_files, too_long_files, quiet_outliers_list,
+def create_metadata(drums_df, input_dir_path, unreadable_files, blacklisted_files, ignored_files, too_long_files, quiet_outliers_list,
                     folder_path, metadata_filename):
     """
 
 
     @param drums_df:
     @param input_dir_path:
+    @param unreadable_files:
     @param blacklisted_files:
     @param ignored_files:
     @param too_long_files:
@@ -126,6 +127,8 @@ def create_metadata(drums_df, input_dir_path, blacklisted_files, ignored_files, 
         "classes": {},
         "n_columns": len(columns),
         "columns": columns,
+        "n_unreadable_files": len(unreadable_files),
+        "unreadable_files": unreadable_files,
         "n_blacklisted_files": len(blacklisted_files),
         "blacklisted_files": blacklisted_files,
         "n_ignored_files": len(ignored_files),

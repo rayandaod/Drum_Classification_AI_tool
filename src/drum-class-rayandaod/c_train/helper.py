@@ -218,7 +218,7 @@ class ClassifierDataset(Dataset):
 class MulticlassClassification(nn.Module):
     def __init__(self, num_feature, num_class):
         super(MulticlassClassification, self).__init__()
-        self.name = "Fully Connected Neural Network"
+        self.name = "FCNN"
 
         self.layer_1 = nn.Linear(num_feature, 64)
         self.layer_2 = nn.Linear(64, 32)

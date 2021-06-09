@@ -4,6 +4,7 @@ import math
 import pickle
 import time
 import pandas as pd
+from os import path
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
@@ -28,10 +29,10 @@ def load_drum_library(drum_lib_path):
     folder_name, folder_path = create_dataset_folder(drum_lib_path)
 
     # Gather the audio files in drum_lib_path that satisfy the required constraints
-    drums_df, blacklisted_files, ignored_files, too_long_files, quiet_outliers = load(drum_lib_path)
+    drums_df, unreadable_files, blacklisted_files, ignored_files, too_long_files, quiet_outliers = load(drum_lib_path)
 
     # Create the full dataframe out of the list of dictionaries, save it in the right folder, and add a metadata file
-    save_all(drums_df, folder_path, drum_lib_path, blacklisted_files, ignored_files, too_long_files,
+    save_all(drums_df, folder_path, drum_lib_path, unreadable_files, blacklisted_files, ignored_files, too_long_files,
              quiet_outliers)
 
     return folder_name
@@ -52,27 +53,31 @@ def create_dataset_folder(drum_lib_path):
     return folder_name, folder_path
 
 
-def load(drum_lib_path, eval=False):
+def load(some_path, eval=False):
     """
     TODO
-    @param drum_lib_path:
+    @param path:
     @param eval:
     @return:
     """
+    assert path.exists(some_path)
+
     # Create empty arrays to be filled
     dataframe_rows = []
+    unreadable_files = []
     blacklisted_files = []
     ignored_files = []
     too_long_files = []
     quiet_outliers = []
 
     # .wav file research loop
-    logger.info(f'Searching for .wav files in {drum_lib_path}...')
-    for input_file in Path(drum_lib_path).glob('**/*.wav'):
+    logger.info(f'Searching for .wav files in {some_path}...')
+    for input_file in Path(some_path).glob('**/*.wav'):
         absolute_path_name = input_file.resolve().as_posix()
         if GlobalConfig.VERBOSE:
-            logger.info(absolute_path_name[len(drum_lib_path) + 1:])
+            logger.info(absolute_path_name[len(some_path) + 1:])
         if not audio_tools.can_load_audio(absolute_path_name):
+            unreadable_files.append(absolute_path_name)
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
@@ -103,6 +108,7 @@ def load(drum_lib_path, eval=False):
         # Recheck readability
         if raw_audio is None:
             logger.warning(f'Skipping {absolute_path_name}, unreadable (audio is None)')
+            unreadable_files.append(absolute_path_name)
             continue
 
         # Add the original duration to the properties
@@ -119,7 +125,7 @@ def load(drum_lib_path, eval=False):
         properties["new_duration"] = new_duration
 
         # If the new_duration attribute is bigger than MAX_SAMPLE_DURATION seconds, the audio is too long, discard it
-        if new_duration >= PreprocessingConfig.MAX_SAMPLE_DURATION:
+        if not eval and new_duration >= PreprocessingConfig.MAX_SAMPLE_DURATION:
             too_long_files.append(absolute_path_name)
             continue
 
@@ -138,16 +144,17 @@ def load(drum_lib_path, eval=False):
         # Append the properties dict to the list of dictionaries, which will become a dataframe later :)
         dataframe_rows.append(properties)
     drums_df = pd.DataFrame(dataframe_rows)
-    return drums_df, blacklisted_files, ignored_files, too_long_files, quiet_outliers
+    return drums_df, unreadable_files, blacklisted_files, ignored_files, too_long_files, quiet_outliers
 
 
-def save_all(drums_df, folder_path, input_dir_path, blacklisted_files, ignored_files, too_long_files,
+def save_all(drums_df, folder_path, input_dir_path, unreadible_files, blacklisted_files, ignored_files, too_long_files,
              quiet_outliers):
     """
 
     @param drums_df:
     @param folder_path:
     @param input_dir_path:
+    @param unreadible_files:
     @param blacklisted_files:
     @param ignored_files:
     @param too_long_files:
@@ -156,8 +163,8 @@ def save_all(drums_df, folder_path, input_dir_path, blacklisted_files, ignored_f
     """
     logger.info('Saving the dataset and metadata file...')
     pickle.dump(drums_df, open(folder_path / DATASET_FILENAME, 'wb'))
-    create_metadata(drums_df, input_dir_path, blacklisted_files, ignored_files, too_long_files, quiet_outliers,
-                    folder_path, metadata_filename=METADATA_JSON_FILENAME)
+    create_metadata(drums_df, input_dir_path, unreadible_files, blacklisted_files, ignored_files, too_long_files,
+                    quiet_outliers, folder_path, metadata_filename=METADATA_JSON_FILENAME)
 
 
 def run_or_load(dataset_folder):

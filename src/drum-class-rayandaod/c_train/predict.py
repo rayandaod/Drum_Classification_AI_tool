@@ -11,17 +11,22 @@ from z_helpers.paths import *
 from config import *
 
 
-def predict(folder_path, dataset_folder_name, model_folder_name):
-    drums_df, _, _, too_long_files, quiet_outliers = load.load(folder_path, eval=True)
-    print(f'Too long: {too_long_files}')
+def predict(path, dataset_folder_name, model_folder_name):
+    # Load the given audio files
+    drums_df, unreadable_files, _, _, _, quiet_outliers = load.load(path, eval=True)
+    print(f'Unreadable: {unreadable_files}')
     print(f'Too quiet: {quiet_outliers}')
 
+    # Extract their features
     drums_df_with_features, _ = extract.load_extract_from(None, drums_df)
-    drums_df_with_features = drums_df_with_features.drop(columns=['melS'])
 
+    # Load the saved model
     nn = torch.load(MODELS / dataset_folder_name / model_folder_name / MODEL_FILENAME)
     nn.eval()
+    if nn.name != "CNN":
+        drums_df_with_features = drums_df_with_features.drop(columns=['melS'])
 
+    # Predict their classes
     with torch.no_grad():
         # Generate prediction
         predictions = []
@@ -35,7 +40,7 @@ def predict(folder_path, dataset_folder_name, model_folder_name):
 
 
 if __name__ == "__main__":
-    drum_types = predict(folder_path='/Users/rayandaod/Documents/Prod/My_samples/AP11 Sample Pack/Hi-Hats',
+    drum_types = predict(path='/Users/rayandaod/Documents/Prod/My_samples/Medasin Overdose 5/mskrb_drums/MSKRB_hihats',
                          dataset_folder_name='20210609-025547-My_samples',
-                         model_folder_name='NN_20210609-110954')
+                         model_folder_name='NN_20210609-155727')
     print(drum_types)

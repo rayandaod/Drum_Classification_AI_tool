@@ -20,6 +20,7 @@ class ConvNet(nn.Module):
     # Designed to work with the input size specified in __init__.py's CNN_INPUT_SIZE
     def __init__(self, cnn_training_config, n_classes):
         super(ConvNet, self).__init__()
+        self.name = "CNN"
         self.conv1 = nn.Conv2d(1, 256, kernel_size=(12, 4), stride=2)
         self.conv1_batch = nn.BatchNorm2d(256)
         self.conv2 = nn.Conv2d(256, 256, kernel_size=(4, 4), stride=(1, 2))
