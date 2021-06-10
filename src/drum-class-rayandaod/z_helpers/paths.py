@@ -6,7 +6,7 @@ DATA = ROOT / 'data/'
 MODELS = ROOT / 'models/'
 
 DATASET_FILENAME = 'dataset.pkl'
-PICKLE_DATASETS_PATH = DATA / 'datasets/'
+DATASETS_PATH = DATA / 'datasets/'
 
 # DATAFRAME_NOT_CAPED_FILENAME = 'dataset_not_caped.pkl'
 # PICKLE_DATAFRAME_NOT_CAPED_PATH = DATA_PATH.joinpath(DATAFRAME_NOT_CAPED_FILENAME)
@@ -27,5 +27,6 @@ DATASET_WITH_FEATURES_FILENAME = 'dataset_features.pkl'
 IMPUTATER_FILENAME = 'imputer.pkl'
 SCALER_FILENAME = 'scaler.pkl'
 
+PICKLE_MODEL_FILENAME = 'pkl_model.pkl'
 MODEL_FILENAME = 'model.pth'
 LOGS_FILENAME = 'logs.txt'

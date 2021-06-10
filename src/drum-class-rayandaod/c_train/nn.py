@@ -22,8 +22,7 @@ logger = logging.getLogger(__name__)
 
 def run(drums_df, dataset_folder):
     # PREPARE DATA
-    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)))
-    X_train, X_val, y_train, y_val, X_test, y_test = prepare_data(data_prep_config, drums_df, dataset_folder)
+    X_train, X_val, y_train, y_val, X_test, y_test, data_prep_config = prepare_data(drums_df, dataset_folder)
 
     # TRAIN
     nn_config = TrainingConfig.NN()
@@ -38,15 +37,16 @@ def run(drums_df, dataset_folder):
     save_model(model, data_prep_config, nn_config, logs_string)
 
 
-def prepare_data(data_prep_config, drums_df, dataset_folder):
-    logger.info("Preparing data...")
-    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df, dataset_folder)
+def prepare_data(drums_df, dataset_folder):
+    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)))
+    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df)
+    X_trainval, X_test = helper.impute_and_scale(X_trainval, X_test, dataset_folder)
     X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval,
                                                       test_size=data_prep_config.VALIDATION_SET_RATIO,
                                                       stratify=y_trainval,
                                                       random_state=GlobalConfig.RANDOM_STATE)
 
-    return X_train, X_val, y_train, y_val, X_test, y_test
+    return X_train, X_val, y_train, y_val, X_test, y_test, data_prep_config
 
 
 def fit_and_predict(model, nn_config, train_X, train_y, val_X, val_y, test_X, test_y):
@@ -178,7 +178,7 @@ def save_model(model, data_prep_config, nn_config, logs_string):
     # Save the metadata
     metadata = {
         "model_name": model.name,
-        "training_params": json.dumps(data_prep_config.__dict__),
+        "data_preparation": json.dumps(data_prep_config.__dict__),
         "NN_training params": json.dumps(nn_config.__dict__),
     }
     with open(model_folder_path / METADATA_JSON_FILENAME, 'w') as outfile:

@@ -1,13 +1,14 @@
-import pickle
 import pandas as pd
 import torch
 import operator
+import pickle
 from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
 from torch.utils.data import Dataset
 from functools import partial
 from torch.utils.data import DataLoader
+from sklearn import preprocessing
 from torch import nn
+from sklearn.impute import IterativeImputer
 
 from config import *
 from z_helpers.paths import *
@@ -16,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def prep_data_b4_training(data_prep_config, drums_df, dataset_folder):
+def prep_data_b4_training(data_prep_config, drums_df):
     logger.info("Preparing data...")
 
     # Cap the number of samples per class or not
@@ -32,14 +33,8 @@ def prep_data_b4_training(data_prep_config, drums_df, dataset_folder):
 
     # Remove the useless columns
     columns_to_drop = ['drum_type_labels', 'drum_type', 'melS']
-    train_np = drop_columns(train_clips_df, columns_to_drop)
-    test_np = drop_columns(val_clips_df, columns_to_drop)
-
-    # There are occasionally random gaps in descriptors, so use imputation to fill in all values
-    train_np, test_np = imputer(train_np, test_np, dataset_folder)
-
-    # Standardize features by removing the mean and scaling to unit variance
-    train_np, test_np = scaler(train_np, test_np, dataset_folder)
+    train_np = drop_columns(train_clips_df, columns_to_drop).to_numpy()
+    test_np = drop_columns(val_clips_df, columns_to_drop).to_numpy()
 
     return train_np, train_clips_df.drum_type_labels, test_np, val_clips_df.drum_type_labels, list(unique_labels.values)
 
@@ -65,6 +60,7 @@ def prep_data_b4_training_CNN(data_prep_config, drums_df):
     test_clips_flat = np.hstack(test_clips_df['melS'].to_numpy())
 
     # Create instances of ClipsDataset
+    # TODO: Make sure we remove the mean and divide by std for each column
     train_dataset = ClipsDataset(train_clips_df, 'mel_spec_model_input', target_feature,
                                  train_clips_flat.mean(), train_clips_flat.std())
     test_dataset = ClipsDataset(test_clips_df, 'mel_spec_model_input', target_feature, test_clips_flat.mean(),
@@ -89,30 +85,43 @@ def cap_or_not_cap(drums_df, data_prep_config):
 def drop_columns(df, columns):
     for col in columns:
         df = df.drop(labels=col, axis=1)
-    return df.to_numpy()
+    return df
 
 
-# Use imputation to fill in all missing values
-def imputer(train_np, test_np, dataset_folder):
-    try:
-        imp = pickle.load(open(DATA / dataset_folder / IMPUTATER_FILENAME, 'rb'))
-    except FileNotFoundError:
-        logger.info(f'No cached imputer found, training')
-        imp = TrainingConfig.Basic.iterative_imputer
-        imp.fit(train_np)
-        pickle.dump(imp, open(PICKLE_DATASETS_PATH / dataset_folder / IMPUTATER_FILENAME, 'wb'))
-    train_np = imp.transform(train_np)
-    test_np = imp.transform(test_np)
-    return train_np, test_np
+def impute_and_scale(train_X, test_X, dataset_folder):
+    # Use imputation to fill in all missing values
+    def impute(train_np, test_np, dataset_folder):
+        try:
+            imp = pickle.load(open(DATA / dataset_folder / IMPUTATER_FILENAME, 'rb'))
+        except FileNotFoundError:
+            logger.info(f'No cached imputer found, training')
+            imp = IterativeImputer(max_iter=TrainingConfig.Basic.IMP_MAX_ITER,
+                                   random_state=GlobalConfig.RANDOM_STATE)
+            imp.fit(train_np)
+            pickle.dump(imp, open(DATASETS_PATH / dataset_folder / IMPUTATER_FILENAME, 'wb'))
+        train_np = imp.transform(train_np)
+        test_np = imp.transform(test_np)
+        return train_np, test_np
 
+    # Standardize the training and testing sets by removing the mean and scaling to unit variance
+    def scale(train_np, test_np, dataset_folder):
+        try:
+            scaler = pickle.load(open(DATA / dataset_folder / SCALER_FILENAME, 'rb'))
+        except FileNotFoundError:
+            logger.info(f'No cached scaler found, scaling')
+            scaler = preprocessing.StandardScaler().fit(train_np)
+            pickle.dump(scaler, open(DATASETS_PATH / dataset_folder / SCALER_FILENAME, 'wb'))
+        train_np = scaler.transform(train_np)
+        test_np = scaler.transform(test_np)
+        return train_np, test_np
 
-# Standardize the training and testing sets by removing the mean and scaling to unit variance
-def scaler(train_np, test_np, dataset_folder):
-    scaler = preprocessing.StandardScaler().fit(train_np)
-    train_np = scaler.transform(train_np)
-    test_np = scaler.transform(test_np)
-    pickle.dump(scaler, open(PICKLE_DATASETS_PATH / dataset_folder / SCALER_FILENAME, 'wb'))
-    return train_np, test_np
+    # There are occasionally random gaps in descriptors, so use imputation to fill in all values
+    train_X, test_X = impute(train_X, test_X, dataset_folder)
+
+    # Standardize features by removing the mean and scaling to unit variance
+    train_X, test_X = scale(train_X, test_X, dataset_folder)
+
+    return train_X, test_X
 
 
 # TODO: make sure these are the right classes

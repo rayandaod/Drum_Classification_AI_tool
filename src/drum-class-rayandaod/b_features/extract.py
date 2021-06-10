@@ -59,7 +59,7 @@ def load_extract_from(dataset_folder, drums_df=None):
 
 def save_all(drums_df_with_features, dataset_folder):
     pickle.dump(drums_df_with_features,
-                open(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME, 'wb'))
+                open(DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME, 'wb'))
     create_metadata(drums_df_with_features, dataset_folder)
 
 
@@ -78,7 +78,7 @@ def create_metadata(drums_df_with_features, dataset_folder):
         columns.append(col_name)
 
     # Load the previously created metadata file
-    metadata_path = PICKLE_DATASETS_PATH / dataset_folder / METADATA_JSON_FILENAME
+    metadata_path = DATASETS_PATH / dataset_folder / METADATA_JSON_FILENAME
     with open(metadata_path, "r+") as metadata_file:
         metadata_dict = json.load(metadata_file)
 
@@ -101,7 +101,7 @@ def run_or_load(dataset_folder):
     if GlobalConfig.RELOAD:
         return extract_features_from_all(dataset_folder)
     else:
-        return pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
+        return pd.read_pickle(DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
 
 
 if __name__ == "__main__":

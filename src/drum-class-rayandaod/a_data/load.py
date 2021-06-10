@@ -47,7 +47,7 @@ def create_dataset_folder(drum_lib_path):
     without_extra_slash = os.path.normpath(drum_lib_path)
     last_part = os.path.basename(without_extra_slash).replace(" ", "_")
     folder_name = time.strftime(f"%Y%m%d-%H%M%S-{last_part}")
-    folder_path = PICKLE_DATASETS_PATH / folder_name
+    folder_path = DATASETS_PATH / folder_name
     os.makedirs(folder_path)
     logger.info(f'New dataset folder: {folder_name}')
     return folder_name, folder_path
@@ -176,7 +176,7 @@ def run_or_load(dataset_folder):
     if GlobalConfig.RELOAD:
         dataset_folder = load_drum_library(GlobalConfig.SAMPLE_LIBRARY)
     if dataset_folder is not None:
-        drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / DATASET_FILENAME)
+        drums_df = pd.read_pickle(DATASETS_PATH / dataset_folder / DATASET_FILENAME)
     else:
         raise Exception('dataset_folder is None, please specify the dataset_folder name.')
     return drums_df, dataset_folder

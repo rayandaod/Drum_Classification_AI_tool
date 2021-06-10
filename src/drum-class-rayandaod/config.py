@@ -1,13 +1,6 @@
-import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
-
 import logging
 
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +9,7 @@ CNN_INPUT_SIZE = (128, 256)
 
 
 class GlobalConfig:
-    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples"
+    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/White Katana Motive pack"
     DRUM_TYPES = ['kick', 'snare', 'hat', 'tom']
 
     DEFAULT_SR = 22050
@@ -67,24 +60,26 @@ class DataPrepConfig:
 
 class TrainingConfig:
     class Basic:
-        MODELS = {
-            'lr': LinearRegression(),
-            'svc': SVC(),
-            'random_forest': RandomForestClassifier(n_estimators=500),
-            'gb': GradientBoostingClassifier(n_estimators=200, learning_rate=0.1, max_depth=3,
-                                             random_state=GlobalConfig.RANDOM_STATE),
-            'knn': KNeighborsClassifier(),
-        }
+        # Models
+        RF_N_ESTIMATORS = 500
 
-        iterative_imputer = IterativeImputer(max_iter=25, random_state=GlobalConfig.RANDOM_STATE)
+        GB_N_ESTIMATORS = 200
+        GB_LR = 0.1
+        GB_MAX_DEPTH = 3
 
-        grid_searches = {
-            'sweep_rf': {
-                'model_type': 'random forest',
-                "n_est_values": [100, 200, 500, 1000],
-                "depth_values": [10]
-            }
-        }
+
+
+        # Imputer
+        IMP_MAX_ITER = 25
+
+        # TODO
+        # grid_searches = {
+        #     'sweep_rf': {
+        #         'model_type': 'random forest',
+        #         "n_est_values": [100, 200, 500, 1000],
+        #         "depth_values": [10]
+        #     }
+        # }
 
     # Implemented this way in order to easily serialize it to JSON
     class NN:

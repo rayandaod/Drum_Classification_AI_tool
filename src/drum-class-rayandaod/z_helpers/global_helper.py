@@ -39,9 +39,9 @@ def load_dataset(dataset_folder, dataset_filename=DATASET_FILENAME):
     @return:
     """
     if dataset_folder is None:
-        all_subdirs = all_subdirs_of(PICKLE_DATASETS_PATH)
+        all_subdirs = all_subdirs_of(DATASETS_PATH)
         dataset_folder = max(all_subdirs, key=os.path.getmtime)
-    drums_df = pd.read_pickle(PICKLE_DATASETS_PATH / dataset_folder / dataset_filename)
+    drums_df = pd.read_pickle(DATASETS_PATH / dataset_folder / dataset_filename)
     return drums_df, dataset_folder
 
 
@@ -74,6 +74,6 @@ def min_path_wo_slash(file_path):
 
 
 def print_and_append(init_string, print_append):
-    print(print_append)
+    logger.info(print_append)
     new_string = init_string + '\n' + print_append
     return new_string

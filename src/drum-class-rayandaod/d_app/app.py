@@ -1,7 +1,8 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QListWidget, QListWidgetItem, QPushButton
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QListWidget, QListWidgetItem, QPushButton, QHBoxLayout, \
+    QComboBox
+from PyQt5.QtCore import Qt, QRect
 from pathlib import Path
 
 sys.path.append(os.path.abspath(os.path.join('')))
@@ -11,7 +12,7 @@ from c_train.predict import predict
 here = Path(__file__).parent
 
 DATASET_FOLDER_NAME = '20210609-025547-My_samples'
-MODEL_FOLDER_NAME = 'NN_20210609-155727'
+MODEL_FOLDER_NAME = 'RF_20210609-234422'
 
 
 class ListBoxWidget(QListWidget):
@@ -19,6 +20,16 @@ class ListBoxWidget(QListWidget):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.resize(600, 600)
+
+        layout = QHBoxLayout()
+        self.setLayout(layout)
+
+        self.combo = QComboBox()
+        self.combo.addItem('RANDOM FOREST')
+        self.combo.addItem('FULLY CONNECTED')
+        self.combo.addItem('CONV. NN')
+
+        layout.addWidget(self.combo)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls:
@@ -54,13 +65,13 @@ class DrumClassificationWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.resize(1200, 600)
-        style_sheet = open(here / "style_sheet.css").read()
+        style_sheet = open(here / "style_sheet.css")
 
         self.listbox_view = ListBoxWidget(self)
 
         self.btn = QPushButton('Predict', self)
         self.btn.setGeometry(995, 545, 200, 50)
-        self.btn.setStyleSheet(styleSheet=style_sheet)
+        self.btn.setStyleSheet(style_sheet.read())
         self.btn.clicked.connect(lambda: self.onPressButton())
 
     def onPressButton(self):
@@ -75,4 +86,7 @@ if __name__ == '__main__':
     window = DrumClassificationWindow()
     window.show()
 
-    sys.exit(app.exec_())
+    try:
+        sys.exit(app.exec_())
+    except SystemExit:
+        print('Closing Window...')

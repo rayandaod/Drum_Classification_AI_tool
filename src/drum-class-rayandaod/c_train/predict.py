@@ -1,6 +1,7 @@
 import sys
 import os
 import torch
+import pickle
 from torch import Tensor
 
 sys.path.append(os.path.abspath(os.path.join('')))
@@ -11,36 +12,57 @@ from z_helpers.paths import *
 from config import *
 
 
-def predict(path, dataset_folder_name, model_folder_name):
+def predict(some_path, dataset_folder, model_folder_name):
     # Load the given audio files
-    drums_df, unreadable_files, _, _, _, quiet_outliers = load.load(path, eval=True)
+    drums_df, unreadable_files, _, _, _, quiet_outliers = load.load(some_path, eval=True)
     print(f'Unreadable: {unreadable_files}')
     print(f'Too quiet: {quiet_outliers}')
 
     # Extract their features
     drums_df_with_features, _ = extract.load_extract_from(None, drums_df)
 
-    # Load the saved model
-    nn = torch.load(MODELS / dataset_folder_name / model_folder_name / MODEL_FILENAME)
-    nn.eval()
-    if nn.name != "CNN":
+    model_folder_path = MODELS / dataset_folder / model_folder_name
+    predictions = []
+
+    # If the model folder starts with NN or CNN, use torch and stuff
+    if model_folder_name.split('_')[0] == 'NN' or model_folder_name.split('_')[0] == 'CNN':
+        nn = torch.load(model_folder_path / MODEL_FILENAME)
+        nn.eval()
+        if nn.name != "CNN":
+            drums_df_with_features = drums_df_with_features.drop(columns=['melS'])
+        # Predict their classes
+        with torch.no_grad():
+            # Generate prediction
+            for row in drums_df_with_features.values.tolist():
+                prediction = nn(Tensor([row]))
+
+                # Predicted class value using argmax
+                predicted_class = ['hat', 'tom', 'snare', 'kick'][np.argmax(prediction)]
+                predictions.append(predicted_class)
+    # Else, use other stuff
+    else:
+        with open(model_folder_path / MODEL_FILENAME, 'rb') as file:
+            pickle_model = pickle.load(file)
+
+        # Remove the melS feature since we are not predicting with the CNN model here
         drums_df_with_features = drums_df_with_features.drop(columns=['melS'])
+        drums_np = drums_df_with_features.to_numpy()
 
-    # Predict their classes
-    with torch.no_grad():
-        # Generate prediction
-        predictions = []
-        for row in drums_df_with_features.values.tolist():
-            prediction = nn(Tensor([row]))
+        # Load imputer and scaler and... impute and scale lol
+        imp = pickle.load(open(DATA / DATASETS_PATH / dataset_folder / IMPUTATER_FILENAME, 'rb'))
+        scaler = pickle.load(open(DATA / DATASETS_PATH / dataset_folder / SCALER_FILENAME, 'rb'))
+        drums_np = imp.transform(drums_np)
+        drums_np = scaler.transform(drums_np)
 
-            # Predicted class value using argmax
-            predicted_class = ['hat', 'tom', 'snare', 'kick'][np.argmax(prediction)]
-            predictions.append(predicted_class)
+        # Predict
+        prediction = pickle_model.predict(drums_np)
+        predictions = [['hat', 'tom', 'snare', 'kick'][pred] for pred in prediction]
     return predictions
 
 
 if __name__ == "__main__":
-    drum_types = predict(path='/Users/rayandaod/Documents/Prod/My_samples/Medasin Overdose 5/mskrb_drums/MSKRB_hihats',
-                         dataset_folder_name='20210609-025547-My_samples',
-                         model_folder_name='NN_20210609-155727')
+    drum_types = predict(
+        some_path='/Users/rayandaod/Documents/Prod/My_samples/AP11 Sample Pack/Snares',
+        dataset_folder='20210609-025547-My_samples',
+        model_folder_name='RF_20210609-234422')
     print(drum_types)
