@@ -30,3 +30,5 @@ SCALER_FILENAME = 'scaler.pkl'
 PICKLE_MODEL_FILENAME = 'pkl_model.pkl'
 MODEL_FILENAME = 'model.pth'
 LOGS_FILENAME = 'logs.txt'
+
+APP_STYLE_SHEET = 'style_sheet.css'

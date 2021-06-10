@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join('')))
 
 from c_train.predict import predict
+from z_helpers.paths import *
 
 here = Path(__file__).parent
 
@@ -65,7 +66,7 @@ class DrumClassificationWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.resize(1200, 600)
-        style_sheet = open(here / "style_sheet.css")
+        style_sheet = open(here / APP_STYLE_SHEET)
 
         self.listbox_view = ListBoxWidget(self)
 
