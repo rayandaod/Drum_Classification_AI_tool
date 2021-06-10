@@ -77,3 +77,11 @@ def print_and_append(init_string, print_append):
     logger.info(print_append)
     new_string = init_string + '\n' + print_append
     return new_string
+
+
+# Remove the useless columns
+def drop_columns(df, columns):
+    for col in columns:
+        if col in df:
+            df = df.drop(labels=col, axis=1)
+    return df

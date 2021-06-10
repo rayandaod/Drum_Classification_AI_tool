@@ -9,7 +9,7 @@ CNN_INPUT_SIZE = (128, 256)
 
 
 class GlobalConfig:
-    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/White Katana Motive pack"
+    SAMPLE_LIBRARY = "/Users/rayandaod/Documents/Prod/My_samples/"
     DRUM_TYPES = ['kick', 'snare', 'hat', 'tom']
 
     DEFAULT_SR = 22050

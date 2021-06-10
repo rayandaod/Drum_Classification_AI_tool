@@ -53,31 +53,50 @@ def create_dataset_folder(drum_lib_path):
     return folder_name, folder_path
 
 
-def load(some_path, eval=False):
+def load(some_path_or_dict, eval=False, is_sample_dict=False):
     """
     TODO
     @param path:
     @param eval:
     @return:
     """
-    assert path.exists(some_path)
+
+    if is_sample_dict:
+        # TODO: not clean...
+        input_files = some_path_or_dict.items()
+    else:
+        assert path.exists(some_path_or_dict)
+        input_files = Path(some_path_or_dict).glob('**/*.wav')
 
     # Create empty arrays to be filled
     dataframe_rows = []
-    unreadable_files = []
     blacklisted_files = []
     ignored_files = []
     too_long_files = []
-    quiet_outliers = []
+
+    if is_sample_dict:
+        unreadable_files = dict()
+        quiet_outliers = dict()
+    else:
+        unreadable_files = []
+        quiet_outliers = []
 
     # .wav file research loop
-    logger.info(f'Searching for .wav files in {some_path}...')
-    for input_file in Path(some_path).glob('**/*.wav'):
-        absolute_path_name = input_file.resolve().as_posix()
+    logger.info(f'Searching for .wav files...')
+    for f in input_files:
+
+        if is_sample_dict:
+            dict_index = f[0]
+            f = f[1]
+
+        absolute_path_name = f.resolve().as_posix()
         if GlobalConfig.VERBOSE:
-            logger.info(absolute_path_name[len(some_path) + 1:])
+            logger.info(absolute_path_name[len(some_path_or_dict) + 1:])
         if not audio_tools.can_load_audio(absolute_path_name):
-            unreadable_files.append(absolute_path_name)
+            if is_sample_dict:
+                unreadable_files[str(dict_index)] = absolute_path_name
+            else:
+                unreadable_files.append(absolute_path_name)
             continue
 
         file_stem = Path(absolute_path_name).stem.lower()
@@ -108,7 +127,10 @@ def load(some_path, eval=False):
         # Recheck readability
         if raw_audio is None:
             logger.warning(f'Skipping {absolute_path_name}, unreadable (audio is None)')
-            unreadable_files.append(absolute_path_name)
+            if is_sample_dict:
+                unreadable_files[str(dict_index)] = absolute_path_name
+            else:
+                unreadable_files.append(absolute_path_name)
             continue
 
         # Add the original duration to the properties
@@ -138,8 +160,14 @@ def load(some_path, eval=False):
 
         # If the audio file is too quiet, discard it
         if is_too_quiet(new_raw_audio):
-            quiet_outliers.append(absolute_path_name)
+            if is_sample_dict:
+                quiet_outliers[str(dict_index)] = absolute_path_name
+            else:
+                quiet_outliers.append(absolute_path_name)
             continue
+
+        if is_sample_dict:
+            properties['dict_index'] = str(dict_index)
 
         # Append the properties dict to the list of dictionaries, which will become a dataframe later :)
         dataframe_rows.append(properties)

@@ -8,6 +8,7 @@ from sklearn.impute import IterativeImputer
 from config import *
 from c_train import helper
 from z_helpers.paths import *
+from z_helpers import global_helper
 
 
 def prep_data_b4_training(data_prep_config, drums_df):
@@ -24,15 +25,9 @@ def prep_data_b4_training(data_prep_config, drums_df):
     train_clips_df, val_clips_df = train_test_split(drums_df_labeled, random_state=GlobalConfig.RANDOM_STATE)
     logger.info(f'{len(train_clips_df)} training samples, {len(val_clips_df)} validation samples')
 
-    # Remove the useless columns
-    def drop_columns(df, columns):
-        for col in columns:
-            df = df.drop(labels=col, axis=1)
-        return df
-
     columns_to_drop = ['drum_type_labels', 'drum_type', 'melS']
-    train_np = drop_columns(train_clips_df, columns_to_drop).to_numpy()
-    test_np = drop_columns(val_clips_df, columns_to_drop).to_numpy()
+    train_np = global_helper.drop_columns(train_clips_df, columns_to_drop).to_numpy()
+    test_np = global_helper.drop_columns(val_clips_df, columns_to_drop).to_numpy()
 
     return train_np, train_clips_df.drum_type_labels, test_np, val_clips_df.drum_type_labels, list(unique_labels.values)
 

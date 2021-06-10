@@ -9,12 +9,18 @@ sys.path.append(os.path.abspath(os.path.join('')))
 from a_data import load
 from b_features import extract
 from z_helpers.paths import *
+from z_helpers import global_helper
 from config import *
 
 
-def predict(some_path, dataset_folder, model_folder_name):
+def predict(some_path, dataset_folder, model_folder_name, is_sample_dict=False):
     # Load the given audio files
-    drums_df, unreadable_files, _, _, _, quiet_outliers = load.load(some_path, eval=True)
+    drums_df, unreadable_files, _, _, _, quiet_outliers = load.load(some_path, eval=True, is_sample_dict=is_sample_dict)
+
+    if is_sample_dict:
+        dict_indices = drums_df['dict_index'].tolist()
+        drums_df = global_helper.drop_columns(drums_df, columns=['dict_index'])
+
     print(f'Unreadable: {unreadable_files}')
     print(f'Too quiet: {quiet_outliers}')
 
@@ -45,7 +51,7 @@ def predict(some_path, dataset_folder, model_folder_name):
             pickle_model = pickle.load(file)
 
         # Remove the melS feature since we are not predicting with the CNN model here
-        drums_df_with_features = drums_df_with_features.drop(columns=['melS'])
+        drums_df_with_features = global_helper.drop_columns(drums_df_with_features, columns=['melS'])
         drums_np = drums_df_with_features.to_numpy()
 
         # Load imputer and scaler and... impute and scale lol
@@ -57,7 +63,11 @@ def predict(some_path, dataset_folder, model_folder_name):
         # Predict
         prediction = pickle_model.predict(drums_np)
         predictions = [['hat', 'tom', 'snare', 'kick'][pred] for pred in prediction]
-    return predictions
+
+    if is_sample_dict:
+        predictions = dict(zip(dict_indices, predictions))
+
+    return predictions, unreadable_files, quiet_outliers
 
 
 if __name__ == "__main__":
