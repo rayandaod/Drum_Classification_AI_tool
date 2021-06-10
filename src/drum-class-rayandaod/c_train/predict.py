@@ -21,7 +21,7 @@ def predict(some_path, dataset_folder, model_folder_name):
     # Extract their features
     drums_df_with_features, _ = extract.load_extract_from(None, drums_df)
 
-    model_folder_path = MODELS / dataset_folder / model_folder_name
+    model_folder_path = MODELS_PATH / dataset_folder / model_folder_name
     predictions = []
 
     # If the model folder starts with NN or CNN, use torch and stuff

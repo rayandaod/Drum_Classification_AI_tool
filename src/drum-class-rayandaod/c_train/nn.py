@@ -15,9 +15,46 @@ from c_train import helper
 from config import *
 from z_helpers import global_helper
 from z_helpers.paths import *
+from c_train import data_prep
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class MulticlassClassification(nn.Module):
+    def __init__(self, num_feature, num_class):
+        super(MulticlassClassification, self).__init__()
+        self.name = "FCNN"
+
+        self.layer_1 = nn.Linear(num_feature, 64)
+        self.layer_2 = nn.Linear(64, 32)
+        self.layer_3 = nn.Linear(32, 16)
+        self.layer_out = nn.Linear(16, num_class)
+
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.2)
+        self.batchnorm1 = nn.BatchNorm1d(64)
+        self.batchnorm2 = nn.BatchNorm1d(32)
+        self.batchnorm3 = nn.BatchNorm1d(16)
+
+    def forward(self, x):
+        x = self.layer_1(x)
+        x = self.batchnorm1(x)
+        x = self.relu(x)
+
+        x = self.layer_2(x)
+        x = self.batchnorm2(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer_3(x)
+        x = self.batchnorm3(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer_out(x)
+
+        return x
 
 
 def run(drums_df, dataset_folder):
@@ -27,8 +64,8 @@ def run(drums_df, dataset_folder):
     # TRAIN
     nn_config = TrainingConfig.NN()
     nn_config.N_INPUT = X_train.shape[1]
-    model = helper.MulticlassClassification(num_feature=nn_config.N_INPUT,
-                                            num_class=len(GlobalConfig.DRUM_TYPES))
+    model = MulticlassClassification(num_feature=nn_config.N_INPUT,
+                                     num_class=len(GlobalConfig.DRUM_TYPES))
     model, logs_string = fit_and_predict(model, nn_config, X_train, y_train.to_numpy(), X_val, y_val.to_numpy(),
                                          X_test,
                                          y_test.to_numpy())
@@ -39,8 +76,8 @@ def run(drums_df, dataset_folder):
 
 def prepare_data(drums_df, dataset_folder):
     data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)))
-    X_trainval, y_trainval, X_test, y_test, _ = helper.prep_data_b4_training(data_prep_config, drums_df)
-    X_trainval, X_test = helper.impute_and_scale(X_trainval, X_test, dataset_folder)
+    X_trainval, y_trainval, X_test, y_test, _ = data_prep.prep_data_b4_training(data_prep_config, drums_df)
+    X_trainval, X_test = data_prep.impute_and_scale(X_trainval, X_test, dataset_folder)
     X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval,
                                                       test_size=data_prep_config.VALIDATION_SET_RATIO,
                                                       stratify=y_trainval,
@@ -167,7 +204,7 @@ def save_model(model, data_prep_config, nn_config, logs_string):
 
     # Define the model folder
     model_folder = 'NN_' + time.strftime("%Y%m%d-%H%M%S")
-    dataset_in_models = MODELS / data_prep_config.DATASET_FOLDER
+    dataset_in_models = MODELS_PATH / data_prep_config.DATASET_FOLDER
     model_folder_path = dataset_in_models / model_folder
     Path(dataset_in_models).mkdir(parents=True, exist_ok=True)
     Path(model_folder_path).mkdir()

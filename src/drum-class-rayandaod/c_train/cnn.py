@@ -12,8 +12,10 @@ from ignite.engine import Events, create_supervised_evaluator, create_supervised
 from ignite.metrics import Accuracy, Loss
 from ignite.handlers import EarlyStopping
 
-from c_train import helper as helper
+from c_train import data_prep
 from config import *
+from z_helpers.paths import *
+from z_helpers import global_helper
 
 
 class ConvNet(nn.Module):
@@ -193,7 +195,7 @@ def train(model, train_loader, val_loader, epochs, early_stopping, lr, momentum,
 def run(drums_df, exp_name, is_continue):
     # PREPARE DATA
     data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)), isCNN=True)
-    train_loader, test_loader, _ = helper.prep_data_b4_training_CNN(data_prep_config, drums_df)
+    train_loader, test_loader, _ = data_prep.prep_data_b4_training_CNN(data_prep_config, drums_df)
 
     # CREATE THE MODEL
     cnn_training_config = TrainingConfig.CNN()
@@ -207,19 +209,19 @@ def run(drums_df, exp_name, is_continue):
 
 if __name__ == "__main__":
     # Load the parser
-    parser = global_parser()
+    parser = global_helper.global_parser()
 
     parser.add_argument('--continue_name', type=str,
                         help='allows you to continue previous training, given an experiment name. Look for a model_latest_[experiment].pt and training_[experiment].log to get the name. For now, epoch seconds is used')
     parser.add_argument('--eval', action='store_true',
                         help='Dont train, just load_drums the best model (must provide --continue_name) and print the accuracy')
 
-    args = parse_args(parser)
+    args = global_helper.parse_args(parser)
     dataset_folder = args.folder
 
     # Load the dataset
     drums_df = pd.read_pickle(
-        PICKLE_DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
+        DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
 
     # Start the training
     experiment_name = args.continue_name if args.continue_name is not None else str(int(time.time()))

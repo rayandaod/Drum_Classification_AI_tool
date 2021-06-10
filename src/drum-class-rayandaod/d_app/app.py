@@ -2,8 +2,7 @@ import sys
 import os
 from PyQt5.QtWidgets import QApplication, QMainWindow, QListWidget, QListWidgetItem, QPushButton, QHBoxLayout, \
     QComboBox
-from PyQt5.QtCore import Qt, QRect
-from pathlib import Path
+from PyQt5.QtCore import Qt
 
 sys.path.append(os.path.abspath(os.path.join('')))
 
@@ -12,8 +11,8 @@ from z_helpers.paths import *
 
 here = Path(__file__).parent
 
-DATASET_FOLDER_NAME = '20210609-025547-My_samples'
-MODEL_FOLDER_NAME = 'RF_20210609-234422'
+DATASET_FOLDER = '20210609-025547-My_samples'
+MODEL_FOLDER = 'RF_20210609-234422'
 
 
 class ListBoxWidget(QListWidget):
@@ -25,12 +24,24 @@ class ListBoxWidget(QListWidget):
         layout = QHBoxLayout()
         self.setLayout(layout)
 
-        self.combo = QComboBox()
-        self.combo.addItem('RANDOM FOREST')
-        self.combo.addItem('FULLY CONNECTED')
-        self.combo.addItem('CONV. NN')
+        self.combo_datasets = QComboBox()
+        self.combo_datasets.addItems(next(os.walk(MODELS_PATH))[1])
+        self.combo_datasets.currentIndexChanged.connect(self.datasetSelectionChange)
+        layout.addWidget(self.combo_datasets)
 
-        layout.addWidget(self.combo)
+        self.combo_models = QComboBox()
+        self.combo_models.addItems(next(os.walk(MODELS_PATH / self.combo_datasets.currentText()))[1])
+        self.combo_models.currentIndexChanged.connect(self.modelSelectionChange)
+        layout.addWidget(self.combo_models)
+
+    def datasetSelectionChange(self, i):
+        DATASET_FOLDER = self.combo_datasets.currentText()
+        for i in range(self.combo_models.count()):
+            self.combo_models.removeItem(i)
+        self.combo_models.addItems(next(os.walk(MODELS_PATH / DATASET_FOLDER))[1])
+
+    def modelSelectionChange(self, i):
+        return
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls:
@@ -77,7 +88,7 @@ class DrumClassificationWindow(QMainWindow):
 
     def onPressButton(self):
         item = QListWidgetItem(self.listbox_view.currentItem())
-        drum_types = predict(item.text(), DATASET_FOLDER_NAME, MODEL_FOLDER_NAME)
+        drum_types = predict(item.text(), DATASET_FOLDER, MODEL_FOLDER)
         print(drum_types)
 
 

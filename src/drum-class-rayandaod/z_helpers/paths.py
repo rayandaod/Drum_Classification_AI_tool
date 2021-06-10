@@ -3,7 +3,7 @@ from pathlib import Path
 here = Path(__file__).parent
 ROOT = here / '../../..'
 DATA = ROOT / 'data/'
-MODELS = ROOT / 'models/'
+MODELS_PATH = ROOT / 'models/'
 
 DATASET_FILENAME = 'dataset.pkl'
 DATASETS_PATH = DATA / 'datasets/'
