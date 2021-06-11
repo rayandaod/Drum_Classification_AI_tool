@@ -13,7 +13,6 @@ from sklearn.svm import SVC
 sys.path.append(os.path.abspath(os.path.join('')))
 
 from z_helpers import global_helper
-from c_train import helper
 from z_helpers.paths import *
 from config import *
 from c_train import data_prep
@@ -46,9 +45,7 @@ def run(drums_df, dataset_folder, model_key):
 
 
 def prepare_data(drums_df, dataset_folder):
-    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)))
-    train_X, train_y, test_X, test_y, drum_class_labels = data_prep.prep_data_b4_training(data_prep_config,
-                                                                                       drums_df)
+    train_X, train_y, test_X, test_y, drum_class_labels, data_prep_config = data_prep.prep_data_b4_training(drums_df, dataset_folder)
     train_X, test_X = data_prep.impute_and_scale(train_X, test_X, dataset_folder)
     return train_X, train_y, test_X, test_y, drum_class_labels, data_prep_config
 

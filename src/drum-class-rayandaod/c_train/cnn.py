@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pandas as pd
 import os
+import sys
 import time
 import shutil
 from tqdm import tqdm
@@ -12,10 +13,16 @@ from ignite.engine import Events, create_supervised_evaluator, create_supervised
 from ignite.metrics import Accuracy, Loss
 from ignite.handlers import EarlyStopping
 
+sys.path.append(os.path.abspath(os.path.join('')))
+
 from c_train import data_prep
 from config import *
 from z_helpers.paths import *
 from z_helpers import global_helper
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+here = Path(__file__).parent
 
 
 class ConvNet(nn.Module):
@@ -57,41 +64,51 @@ class ConvNet(nn.Module):
         return F.log_softmax(tensor, dim=-1) if softmax else tensor
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-here = Path(__file__).parent
+def run(drums_df, exp_name, dataset_folder, is_continue=False):
+    # PREPARE DATA
+    train_loader, test_loader, _, data_prep_config = data_prep.prep_data_b4_training_CNN(drums_df, dataset_folder)
 
+    # CREATE THE MODEL
+    cnn_training_config = TrainingConfig.CNN()
+    model = ConvNet(cnn_training_config, n_classes=len(GlobalConfig.DRUM_TYPES))
 
-def set_handler(handler):
-    logger.addHandler(handler)
-
-
-# To resume training of an existing model
-# Note: Input model & optimizer should be pre-defined.  This routine only updates their states.
-def _load_checkpoint(model, optimizer, experiment_name):
-    filename = MODELS_PATH / f'model_latest_{experiment_name}.pt'
-    logger.info(f'Loading previous model state {filename}')
-    if os.path.isfile(filename):
-        checkpoint = torch.load(filename)
-        start_epoch = checkpoint['epoch']
-        start_best_metric = checkpoint['best_accuracy']
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    else:
-        raise ValueError('No checkpoint found')
-
-    return model, optimizer, start_epoch, start_best_metric
+    # TRAIN
+    train(model, train_loader, test_loader, cnn_training_config.MAX_EPOCHS, cnn_training_config.EARLY_STOPPING,
+          cnn_training_config.LEARNING_RATE, cnn_training_config.MOMENTUM, cnn_training_config.LOG_INTERVAL,
+          exp_name, data_prep_config, continueing=is_continue)
 
 
 def train(model, train_loader, val_loader, epochs, early_stopping, lr, momentum, log_interval, experiment_name,
-          continueing=False):
+          data_prep_config, continueing=False):
+    # To resume training of an existing model
+    # Note: Input model & optimizer should be pre-defined.  This routine only updates their states.
+    def _load_checkpoint(model, optimizer, experiment_name, dataset_folder):
+        filename = MODELS_PATH / dataset_folder / f'model_latest_{experiment_name}.pt'
+        logger.info(f'Loading previous model state {filename}')
+        if os.path.isfile(filename):
+            checkpoint = torch.load(filename)
+            start_epoch = checkpoint['epoch']
+            start_best_metric = checkpoint['best_accuracy']
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        else:
+            raise ValueError('No checkpoint found')
+
+        return model, optimizer, start_epoch, start_best_metric
+
     # Choose the right device
     device = 'cpu'
     if torch.cuda.is_available():
         device = 'cuda'
 
+    model_folder = 'CNN_' + time.strftime("%Y%m%d-%H%M%S")
+    dataset_in_models = MODELS_PATH / data_prep_config.DATASET_FOLDER
+    model_in_dataset_in_models_path = dataset_in_models / model_folder
+    Path(dataset_in_models).mkdir(parents=True, exist_ok=True)
+    Path(model_in_dataset_in_models_path).mkdir()
+
     # Setup the summary writer
-    writer = SummaryWriter(MODELS_PATH / f'tensorboard/runs_{experiment_name}')
+    writer = SummaryWriter(model_in_dataset_in_models_path / f'tensorboard/runs_{experiment_name}')
     data_loader_iter = iter(train_loader)
     x, y = next(data_loader_iter)
     writer.add_graph(model, x)
@@ -177,10 +194,11 @@ def train(model, train_loader, val_loader, epochs, early_stopping, lr, momentum,
             'accuracy': avg_accuracy,
             'best_accuracy': engine.state.best_accuracy,
             'loss': avg_nll
-        }, f'model_latest_{experiment_name}.pt')
+        }, model_in_dataset_in_models_path / f'model_latest_{experiment_name}.pt')
         if avg_accuracy > engine.state.best_accuracy:
             engine.state.best_accuracy = avg_accuracy
-            shutil.copyfile(f'model_latest_{experiment_name}.pt', f'model_best_{experiment_name}.pt')
+            shutil.copyfile(model_in_dataset_in_models_path / f'model_latest_{experiment_name}.pt',
+                            model_in_dataset_in_models_path / f'model_best_{experiment_name}.pt')
 
     # Early stopping
     handler = EarlyStopping(patience=early_stopping,
@@ -192,38 +210,22 @@ def train(model, train_loader, val_loader, epochs, early_stopping, lr, momentum,
     writer.close()
 
 
-def run(drums_df, exp_name, is_continue):
-    # PREPARE DATA
-    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)), isCNN=True)
-    train_loader, test_loader, _ = data_prep.prep_data_b4_training_CNN(data_prep_config, drums_df)
-
-    # CREATE THE MODEL
-    cnn_training_config = TrainingConfig.CNN()
-    model = ConvNet(cnn_training_config, n_classes=len(GlobalConfig.DRUM_TYPES))
-
-    # TRAIN
-    train(model, train_loader, test_loader, cnn_training_config.MAX_EPOCHS, cnn_training_config.EARLY_STOPPING,
-          cnn_training_config.LEARNING_RATE, cnn_training_config.MOMENTUM, cnn_training_config.LOG_INTERVAL,
-          exp_name, continueing=is_continue)
-
-
 if __name__ == "__main__":
-    # Load the parser
+    # Load the parser and the dataset
     parser = global_helper.global_parser()
-
     parser.add_argument('--continue_name', type=str,
-                        help='allows you to continue previous training, given an experiment name. Look for a model_latest_[experiment].pt and training_[experiment].log to get the name. For now, epoch seconds is used')
+                        help='allows you to continue previous training, given an experiment name. Look for a '
+                             'model_latest_[experiment].pt and training_[experiment].log to get the name. '
+                             'For now, epoch seconds is used')
     parser.add_argument('--eval', action='store_true',
-                        help='Dont train, just load_drums the best model (must provide --continue_name) and print the accuracy')
-
+                        help='Dont train, just load_drums the best model (must provide --continue_name) '
+                             'and print the accuracy')
     args = global_helper.parse_args(parser)
     dataset_folder = args.folder
-
-    # Load the dataset
-    drums_df = pd.read_pickle(
-        DATASETS_PATH / dataset_folder / DATASET_WITH_FEATURES_FILENAME)
+    drums_df, dataset_folder = global_helper.load_dataset(dataset_folder,
+                                                          dataset_filename=DATASET_WITH_FEATURES_FILENAME)
 
     # Start the training
-    experiment_name = args.continue_name if args.continue_name is not None else str(int(time.time()))
+    experiment_name = args.continue_name if args.continue_name is not None else 'CNN_' + str(int(time.time()))
     continue_exp = args.continue_name is not None
-    run(drums_df, experiment_name, is_continue=continue_exp)
+    run(drums_df, experiment_name, dataset_folder, is_continue=continue_exp)

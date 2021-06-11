@@ -75,8 +75,8 @@ def run(drums_df, dataset_folder):
 
 
 def prepare_data(drums_df, dataset_folder):
-    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)))
-    X_trainval, y_trainval, X_test, y_test, _ = data_prep.prep_data_b4_training(data_prep_config, drums_df)
+    X_trainval, y_trainval, X_test, y_test, _, data_prep_config = data_prep.prep_data_b4_training(drums_df,
+                                                                                                  dataset_folder)
     X_trainval, X_test = data_prep.impute_and_scale(X_trainval, X_test, dataset_folder)
     X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval,
                                                       test_size=data_prep_config.VALIDATION_SET_RATIO,
@@ -204,13 +204,13 @@ def save_model(model, data_prep_config, nn_config, logs_string):
 
     # Define the model folder
     model_folder = 'NN_' + time.strftime("%Y%m%d-%H%M%S")
-    dataset_in_models = MODELS_PATH / data_prep_config.DATASET_FOLDER
-    model_folder_path = dataset_in_models / model_folder
+    dataset_in_models = MODELS_PATH / dataset_folder
+    model_in_dataset_in_models_path = dataset_in_models / model_folder
     Path(dataset_in_models).mkdir(parents=True, exist_ok=True)
-    Path(model_folder_path).mkdir()
+    Path(model_in_dataset_in_models_path).mkdir()
 
     # Save the model
-    torch.save(model, model_folder_path / MODEL_FILENAME)
+    torch.save(model, model_in_dataset_in_models_path / MODEL_FILENAME)
 
     # Save the metadata
     metadata = {
@@ -218,11 +218,11 @@ def save_model(model, data_prep_config, nn_config, logs_string):
         "data_preparation": json.dumps(data_prep_config.__dict__),
         "NN_training params": json.dumps(nn_config.__dict__),
     }
-    with open(model_folder_path / METADATA_JSON_FILENAME, 'w') as outfile:
+    with open(model_in_dataset_in_models_path / METADATA_JSON_FILENAME, 'w') as outfile:
         json.dump(metadata, outfile)
 
     # Save the logs
-    log_file = open(model_folder_path / LOGS_FILENAME, "a+")
+    log_file = open(model_in_dataset_in_models_path / LOGS_FILENAME, "a+")
     log_file.write(logs_string)
     log_file.close()
 

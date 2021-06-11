@@ -67,8 +67,6 @@ class TrainingConfig:
         GB_LR = 0.1
         GB_MAX_DEPTH = 3
 
-
-
         # Imputer
         IMP_MAX_ITER = 25
 

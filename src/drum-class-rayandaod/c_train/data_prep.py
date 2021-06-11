@@ -1,5 +1,6 @@
 import pandas as pd
 import pickle
+import os
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 from sklearn.experimental import enable_iterative_imputer
@@ -11,8 +12,11 @@ from z_helpers.paths import *
 from z_helpers import global_helper
 
 
-def prep_data_b4_training(data_prep_config, drums_df):
+def prep_data_b4_training(drums_df, dataset_folder):
     logger.info("Preparing data...")
+
+    # Create the data_prep_config
+    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(dataset_folder)))
 
     # Cap the number of samples per class or not
     drums_df = cap_or_not_cap(drums_df, data_prep_config)
@@ -29,11 +33,15 @@ def prep_data_b4_training(data_prep_config, drums_df):
     train_np = global_helper.drop_columns(train_clips_df, columns_to_drop).to_numpy()
     test_np = global_helper.drop_columns(val_clips_df, columns_to_drop).to_numpy()
 
-    return train_np, train_clips_df.drum_type_labels, test_np, val_clips_df.drum_type_labels, list(unique_labels.values)
+    return train_np, train_clips_df.drum_type_labels, test_np, val_clips_df.drum_type_labels, list(
+        unique_labels.values), data_prep_config
 
 
-def prep_data_b4_training_CNN(data_prep_config, drums_df):
+def prep_data_b4_training_CNN(drums_df, dataset_folder):
     logger.info("Preparing data...")
+
+    # Create the data_prep_config
+    data_prep_config = DataPrepConfig(os.path.basename(os.path.normpath(str(dataset_folder))), isCNN=True)
 
     # Cap the number of samples per class or not
     drums_df = cap_or_not_cap(drums_df, data_prep_config)
@@ -65,12 +73,13 @@ def prep_data_b4_training_CNN(data_prep_config, drums_df):
     test_loader = helper.load(test_dataset, batch_size=data_prep_config.CNN_VAL_BATCH_SIZE, is_train=False,
                               desired_len=CNN_INPUT_SIZE[1])
 
-    return train_loader, test_loader, list(unique_labels.values)
+    return train_loader, test_loader, list(unique_labels.values), data_prep_config
 
 
 # Cap the number of samples per class or not
 def cap_or_not_cap(drums_df, data_prep_config):
     if data_prep_config.N_SAMPLES_PER_CLASS is not None:
+        print(drums_df)
         drums_df = drums_df.groupby('drum_type').head(data_prep_config.N_SAMPLES_PER_CLASS)
     return drums_df
 

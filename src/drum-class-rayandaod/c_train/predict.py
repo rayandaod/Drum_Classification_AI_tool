@@ -31,11 +31,16 @@ def predict(some_path, dataset_folder, model_folder_name, is_sample_dict=False):
     predictions = []
 
     # If the model folder starts with NN or CNN, use torch and stuff
-    if model_folder_name.split('_')[0] == 'NN' or model_folder_name.split('_')[0] == 'CNN':
-        nn = torch.load(model_folder_path / MODEL_FILENAME)
-        nn.eval()
-        if nn.name != "CNN":
+    model_prefix = model_folder_name.split('_')[0]
+    if model_prefix == 'NN' or model_prefix == 'CNN':
+        if model_prefix == "CNN":
+            nn = torch.load(model_folder_path / MODEL_FILENAME)
+            nn.eval()
+            drums_df_with_features = drums_df_with_features['melS']
+        else:
             drums_df_with_features = drums_df_with_features.drop(columns=['melS'])
+            nn = torch.load(model_folder_path / MODEL_FILENAME)
+            nn.eval()
         # Predict their classes
         with torch.no_grad():
             # Generate prediction
