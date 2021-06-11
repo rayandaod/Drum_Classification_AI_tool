@@ -9,9 +9,13 @@ tests/*
 
 data/*
 !data/.gitkeep
+!data/datasets/
 !data/augmented_data/
 !data/words_to_blacklist.txt
 !data/words_to_ignore.txt
+
+data/datasets/*
+!data/datasets/.gitkeep
 
 data/augmented_data/*
 !data/augmented_data/time_stretched/
